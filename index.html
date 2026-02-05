@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Pixel JD - Bear Flash Tap Master</title>
+    <style>
+        /* --- 基礎環境設定 --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: sans-serif; }
+        #game-container { width: 720px; height: 1280px; position: relative; overflow: hidden; background: #1a1a2e; transform-origin: center; flex-shrink: 0; }
+        .ui-element { position: absolute; transform: translate(-50%, -50%); transform-origin: center; user-select: none; -webkit-user-drag: none; }
+
+        /* --- 1. 背景與角色 --- */
+        #bg-main { width: 720px; height: 1280px; left: 360px; top: 640px; z-index: 0; }
+        #ui-character-bear { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; }
+        #ui-panel-main { width: 720px; height: 810px; left: 360px; top: 875px; z-index: 5; }
+        
+        /* --- 2. ⏳ 計時器容器 --- */
+        #ui-timer-container {
+            position: absolute; left: 348px; top: 98px; width: 300px; height: 80px;
+            transform: translate(-50%, -50%); z-index: 30;
+            display: flex; justify-content: center; align-items: center; 
+            gap: 0; pointer-events: none;
+        }
+        .timer-img { height: 100%; width: auto; object-fit: contain; margin-left: -3px; margin-right: -3px; }
+        .timer-colon { height: 60%; width: auto; object-fit: contain; margin-top: -5px; margin-left: -5px; margin-right: -5px; }
+
+        /* --- 3. 遊戲核心 UI --- */
+        #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 10; }
+        #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 10; }
+        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 11; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
+        #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 12; pointer-events: none; }
+        
+        /* 九宮格 */
+        #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .card-slot { position: absolute; width: 230px; height: 230px; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; transition: transform 0.1s; }
+        .btn-card-base { width: 100%; height: 100%; display: block; }
+        .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
+        .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
+        .card-slot:active { transform: translate(-50%, -50%) scale(0.92); filter: brightness(0.9); }
+
+        /* HUD */
+        .hud-item { z-index: 15; transition: opacity 0.2s; }
+        #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
+        #ui-heart-2 { width: 44px; height: 38px; left: 101px; top: 100px; }
+        #ui-heart-3 { width: 44px; height: 38px; left: 149px; top: 100px; }
+        #ui-icon-star { width: 44px; height: 44px; left: 528px; top: 99px; z-index: 15; }
+
+        /* --- 4. 倒數動畫 --- */
+        .countdown-img { z-index: 50; display: none; pointer-events: none; }
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+        }
+        .anim-pop { animation: popIn 0.5s ease-out forwards; }
+        #ui-text-3 { width: 167px; height: 211px; left: 358px; top: 757px; }
+        #ui-text-2 { width: 169px; height: 211px; left: 356px; top: 757px; }
+        #ui-text-1 { width: 101px; height: 212px; left: 355px; top: 757px; }
+        #ui-text-go { width: 343px; height: 185px; left: 357px; top: 757px; }
+
+        /* --- 5. 首頁圖層 (z-index 100) --- */
+        #ui-home-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 100; }
+        #ui-mask { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); cursor: pointer; }
+        #ui-panel-start { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 101; }
+        #character-home { width: 547px; height: 496px; left: 361px; top: 676px; z-index: 102; }
+        #logo-main { width: 514px; height: 216px; left: 369px; top: 315px; z-index: 102; }
+        
+        #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
+        #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
+        #btn-coffee:active, #btn-share:active { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+
+        #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
+        #btn-start:active { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+        #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
+        #btn-start:active ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+
+        /* --- 6. 🏆 結算介面 (z-index 200) --- */
+        #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
+        
+        #res-panel { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 201; }
+        /* 這是背景圖，讓它單純顯示 */
+        #res-panel-rank { width: 547px; height: 653px; left: 361px; top: 598px; z-index: 202; }
+        
+        /* [已修正] ★ 這裡就是你的「遮罩 (Mask)」 ★ */
+        #rank-content-layer {
+            position: absolute; 
+            left: 361px; top: 598px; /* 跟 panel-rank 一樣置中 */
+            
+            /* 設定遮罩範圍：比底圖(547x653)稍微小一點，做出內距 */
+            width: 500px; 
+            height: 600px; 
+            
+            /* 圓角：配合手繪風的圓滑程度 */
+            border-radius: 30px; 
+
+            /* ★關鍵：這行就是遮罩效果，超出這個框的都會被切掉 */
+            overflow: hidden; 
+            
+            transform: translate(-50%, -50%);
+            z-index: 203; /* 確保在底圖(#res-panel-rank)之上 */
+        }
+        
+        /* A. 滑動區域 - 確保它填滿遮罩容器 */
+        #rank-scroll-view {
+            width: 100%;
+            height: 100%; /* 填滿父容器 */
+            overflow-y: scroll; /* 允許垂直捲動 */
+            
+            /* 讓捲動順滑 */
+            -webkit-overflow-scrolling: touch;
+
+            /* 隱藏卷軸 */
+            scrollbar-width: none; 
+            -ms-overflow-style: none; 
+            
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            
+            /* 內容的上下緩衝，避免第一筆跟最後一筆貼太死 */
+            padding-top: 10px;
+            padding-bottom: 20px; 
+        }
+        #rank-scroll-view::-webkit-scrollbar { display: none; }
+
+        /* B. 排行榜單行樣式 */
+        .rank-row {
+            width: 480px; /* 稍微比容器小一點，留左右間距 */
+            height: 101px;
+            margin-bottom: -10px; 
+            background-image: url('assets/ui_rank_row_normal.webp');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            flex-shrink: 0; 
+            display: flex; justify-content: space-around; align-items: center;
+            color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 2px #000;
+        }
+
+        /* C. 固定底部 (玩家自己) */
+        #rank-fixed-row {
+            position: absolute;
+            left: 360px; top: 855px; 
+            width: 522px; height: 101px;
+            transform: translate(-50%, -50%);
+            z-index: 205; /* 浮在最上面 */
+            background-image: url('assets/ui_rank_row_self.webp');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex; justify-content: space-around; align-items: center;
+            color: #ffd700; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 2px #000;
+            pointer-events: none; /* 讓點擊穿透，如果需要的話 */
+        }
+
+        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; }
+        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; }
+        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; }
+        #ui-text-retry { width: 323px; height: 55px; left: 362px; top: 985px; z-index: 204; pointer-events: none; transition: transform 0.1s; }
+
+        #res-btn-coffee:active, #res-btn-share:active, #res-btn-retry:active {
+            transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9);
+        }
+        #res-btn-retry:active ~ #ui-text-retry {
+            transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9);
+        }
+
+        #bg-bar-top { width: 720px; height: 53px; left: 360px; top: 27px; z-index: 20; }
+        #bg-bar-bottom { width: 720px; height: 69px; left: 360px; top: 1246px; z-index: 20; }
+
+        /* --- 7. Debug 面板 --- */
+        #debug-panel { position: fixed; top: 10px; right: 10px; z-index: 999; background: rgba(0,0,0,0.9); color: #fff; padding: 12px; border-radius: 8px; width: 210px; font-family: monospace; }
+        .debug-group { margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 8px; }
+        .debug-group label { display: block; font-size: 11px; color: #ffeb3b; margin-bottom: 5px; }
+        .debug-btn { background: #444; color: #fff; border: 1px solid #666; padding: 4px; margin: 2px; cursor: pointer; border-radius: 4px; font-size: 10px; width: 45%; }
+        .btn-play { background: #2e7d32; width: 100%; color: white; border: 1px solid #4caf50; font-weight: bold; margin-bottom: 5px; }
+        #debug-slider { width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <img src="assets/bg_main.webp" class="ui-element" id="bg-main">
+    <img src="assets/character_bear.webp" class="ui-element" id="ui-character-bear">
+    <img src="assets/panel_main.webp" class="ui-element" id="ui-panel-main">
+
+    <div id="ui-timer-container"></div>
+
+    <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-1">
+    <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-2">
+    <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
+    <img src="assets/icon_star.webp" class="ui-element" id="ui-icon-star">
+
+    <img src="assets/ui_text_combo_time.webp" class="ui-element" id="ui-text-combo-time">
+    <img src="assets/ui_combo_bar_bg.webp" class="ui-element" id="ui-combo-bar-bg">
+    <img src="assets/ui_combo_bar_fill.webp" class="ui-element" id="ui-combo-bar-fill">
+    <img src="assets/ui_combo_bar_cover.webp" class="ui-element" id="ui-combo-bar-cover">
+
+    <div id="game-grid">
+        <div class="card-slot" style="left: 130px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_1.webp"></div></div>
+        <div class="card-slot" style="left: 360px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_2.webp"></div></div>
+        <div class="card-slot" style="left: 590px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_3.webp"></div></div>
+        <div class="card-slot" style="left: 130px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_4.webp"></div></div>
+        <div class="card-slot" style="left: 360px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_5.webp"></div></div>
+        <div class="card-slot" style="left: 590px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_6.webp"></div></div>
+        <div class="card-slot" style="left: 130px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_7.webp"></div></div>
+        <div class="card-slot" style="left: 360px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_8.webp"></div></div>
+        <div class="card-slot" style="left: 590px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_9.webp"></div></div>
+    </div>
+
+    <img src="assets/ui_text_3.webp" class="ui-element countdown-img" id="ui-text-3">
+    <img src="assets/ui_text_2.webp" class="ui-element countdown-img" id="ui-text-2">
+    <img src="assets/ui_text_1.webp" class="ui-element countdown-img" id="ui-text-1">
+    <img src="assets/ui_text_go.webp" class="ui-element countdown-img" id="ui-text-go">
+
+    <div id="ui-home-screen">
+        <div id="ui-mask" onclick="this.parentElement.style.display='none'"></div>
+        <img src="assets/ui_panel_start.webp" class="ui-element" id="ui-panel-start">
+        <img src="assets/character_home.webp" class="ui-element" id="character-home">
+        <img src="assets/logo_main.webp" class="ui-element" id="logo-main">
+        <img src="assets/btn_coffee.webp" class="ui-element" id="btn-coffee" onclick="alert('Support Button!')">
+        <img src="assets/btn_share.webp" class="ui-element" id="btn-share" onclick="alert('Share Button!')">
+        <img src="assets/btn_start.webp" class="ui-element" id="btn-start" onclick="startGameProcess()">
+        <img src="assets/ui_text_start.webp" class="ui-element" id="ui-text-start">
+    </div>
+
+    <div id="ui-result-screen">
+        <div id="ui-mask-result" style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);" onclick="this.parentElement.style.display='none'"></div>
+        <img src="assets/ui_panel_start.webp" class="ui-element" id="res-panel">
+        <img src="assets/ui_panel_rank.webp" class="ui-element" id="res-panel-rank"> 
+        
+        <div id="rank-content-layer">
+            <div id="rank-scroll-view">
+                </div>
+        </div>
+
+        <div id="rank-fixed-row">
+            <span>Rank 6</span><span>YOU</span><span>12,345</span>
+        </div>
+        
+        <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
+        <img src="assets/btn_share.webp" class="ui-element" id="res-btn-share">
+        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="alert('Replay Logic Here')">
+        <img src="assets/ui_text_retry.webp" class="ui-element" id="ui-text-retry">
+    </div>
+
+    <img src="assets/bg_bar_top.webp" class="ui-element" id="bg-bar-top">
+    <img src="assets/bg_bar_bottom.webp" class="ui-element" id="bg-bar-bottom">
+</div>
+
+<div id="debug-panel">
+    <div class="debug-group">
+        <label>畫面測試</label>
+        <button class="debug-btn" onclick="showResultScreen()" style="background:#f57c00; border-color:#ffb74d;">💀 顯示結算介面</button>
+    </div>
+    <div class="debug-group">
+        <label>遊戲流程</label>
+        <button class="debug-btn btn-play" onclick="startGameProcess()">▶ 測試倒數</button>
+        <button class="debug-btn" onclick="stopGameTimer()">⏹ 停止計時</button>
+    </div>
+    <div class="debug-group">
+        <label>數字縮放</label>
+        <button class="debug-btn" onclick="testDigits(2)">2位</button>
+        <button class="debug-btn" onclick="testDigits(5)">5位</button>
+    </div>
+    <div class="debug-group">
+        <label>HP / Bar 測試</label>
+        <button class="debug-btn" onclick="testHP(1)">1 HP</button>
+        <button class="debug-btn" onclick="testHP(3)">全滿</button>
+        <input type="range" id="debug-slider" min="0" max="100" value="100" oninput="testBar(this.value)" style="width:95%; margin-top:5px;">
+    </div>
+    <button class="debug-btn" style="width:100%; background:#c62828;" onclick="this.parentElement.style.display='none'">隱藏面板</button>
+</div>
+
+<script>
+    let gameTimer = null;
+    let timeLeft = 6000;
+
+    function resizeGame() {
+        const container = document.getElementById('game-container');
+        const scale = Math.min(window.innerWidth / 720, window.innerHeight / 1280);
+        container.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resizeGame);
+    window.addEventListener('load', resizeGame);
+    resizeGame();
+
+    // --- 💀 初始化排行榜 (產生假資料) ---
+    function initLeaderboard() {
+        const list = document.getElementById('rank-scroll-view');
+        list.innerHTML = ''; // 清空
+        
+        // 增加資料數量讓你測試滑動效果
+        for(let i=1; i<=100; i++) {
+            const row = document.createElement('div');
+            row.className = 'rank-row';
+            // 這裡先塞假文字方便你看位置，之後會換成圖片數字
+            row.innerHTML = `<span>Rank ${i}</span><span>Player ${i}</span><span>${99999 - i*100}</span>`;
+            list.appendChild(row);
+        }
+    }
+    initLeaderboard(); // 啟動時先跑一次
+
+    // --- 顯示結算介面 ---
+    function showResultScreen() {
+        document.getElementById('ui-result-screen').style.display = 'block';
+    }
+
+    // --- ⏳ 計時器 ---
+    function updateTimerDisplay(totalUnits) {
+        const container = document.getElementById('ui-timer-container');
+        container.innerHTML = '';
+        const seconds = Math.floor(totalUnits / 100);
+        const millis = totalUnits % 100;
+        const sStr = seconds.toString().padStart(2, '0');
+        const mStr = millis.toString().padStart(2, '0');
+        const fullStr = sStr + ':' + mStr;
+
+        for (let char of fullStr) {
+            const img = document.createElement('img');
+            if (char === ':') {
+                img.src = 'assets/num_ui_colon.webp'; 
+                img.className = 'timer-colon';
+            } else {
+                img.src = `assets/num_ui_${char}.webp`;
+                img.className = 'timer-img';
+            }
+            container.appendChild(img);
+        }
+    }
+
+    function startGameTimer() {
+        stopGameTimer();
+        timeLeft = 6000;
+        updateTimerDisplay(timeLeft);
+        gameTimer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                stopGameTimer();
+                alert("Time Up!");
+                showResultScreen(); 
+            }
+            updateTimerDisplay(timeLeft);
+        }, 10);
+    }
+
+    function stopGameTimer() {
+        if (gameTimer) clearInterval(gameTimer);
+    }
+
+    // --- 流程控制 ---
+    function startGameProcess() {
+        document.getElementById('ui-home-screen').style.display = 'none';
+        document.getElementById('ui-result-screen').style.display = 'none'; 
+        
+        const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
+        let delay = 0;
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            el.style.display = 'none';
+            el.classList.remove('anim-pop');
+        });
+        ids.forEach((id, index) => {
+            setTimeout(() => {
+                if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
+                const el = document.getElementById(id);
+                el.style.display = 'block';
+                el.classList.add('anim-pop');
+                if (id === 'ui-text-go') {
+                    setTimeout(() => { 
+                        el.style.display = 'none'; 
+                        startGameTimer(); 
+                    }, 500);
+                }
+            }, delay);
+            delay += 800;
+        });
+    }
+
+    function setGridNumber(index, number) {
+        const slots = document.querySelectorAll('.card-slot');
+        if (!slots[index]) return;
+        const wrapper = slots[index].querySelector('.num-wrapper');
+        const numStr = number.toString();
+        wrapper.innerHTML = '';
+        for (let char of numStr) {
+            const img = document.createElement('img'); img.src = `assets/num_grid_${char}.webp`;
+            wrapper.appendChild(img);
+        }
+        let scaleValue = 1.0;
+        const len = numStr.length;
+        if (len === 2) scaleValue = 0.8;
+        else if (len === 3) scaleValue = 0.5;
+        else if (len === 4) scaleValue = 0.4;
+        else if (len >= 5) scaleValue = 0.3;
+        wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+    }
+
+    document.querySelectorAll('.card-slot').forEach((slot, i) => {
+        slot.addEventListener('click', () => setGridNumber(i, Math.floor(Math.random() * 99999) + 1));
+    });
+
+    function testDigits(d) {
+        const val = Math.pow(10, d) - 1;
+        document.querySelectorAll('.card-slot').forEach((_, i) => setGridNumber(i, val));
+    }
+
+    function testHP(hp) {
+        for (let i = 1; i <= 3; i++) {
+            document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
+        }
+    }
+
+    function testBar(val) {
+        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
+    }
+    const fillBar = document.getElementById('ui-combo-bar-fill');
+    fillBar.addEventListener('click', () => { fillBar.style.transform = `translate(-50%, -50%) scaleX(${Math.random()})`; });
+
+    updateTimerDisplay(6000);
+</script>
+</body>
+</html>
