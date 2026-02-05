@@ -32,13 +32,29 @@
         #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 11; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 12; pointer-events: none; }
         
-        /* 九宮格 */
+        /* 九宮格按鈕優化 */
         #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .card-slot { position: absolute; width: 230px; height: 230px; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; transition: transform 0.1s; }
+        
+        .card-slot { 
+            position: absolute; width: 230px; height: 230px; 
+            transform: translate(-50%, -50%); 
+            pointer-events: auto; 
+            cursor: pointer; 
+            
+            /* [優化] 改用 0.08s 極速回彈，並告訴瀏覽器這不是雙擊操作 */
+            transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1); 
+            touch-action: manipulation; 
+        }
+        
+        /* [JS控制] 新增這個 class 來取代 :active */
+        .card-slot.pressed {
+            transform: translate(-50%, -50%) scale(0.92) !important;
+            filter: brightness(0.9);
+        }
+
         .btn-card-base { width: 100%; height: 100%; display: block; }
         .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
         .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
-        .card-slot:active { transform: translate(-50%, -50%) scale(0.92); filter: brightness(0.9); }
 
         /* HUD */
         .hud-item { z-index: 15; transition: opacity 0.2s; }
@@ -67,59 +83,47 @@
         #character-home { width: 547px; height: 496px; left: 361px; top: 676px; z-index: 102; }
         #logo-main { width: 514px; height: 216px; left: 369px; top: 315px; z-index: 102; }
         
-        #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
-        #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
-        #btn-coffee:active, #btn-share:active { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
-
-        #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 103; cursor: pointer; transition: transform 0.1s; }
-        #btn-start:active { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+        #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        
+        #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        
+        /* [JS控制] 通用按鈕按下效果 */
+        .btn-pressed { transform: translate(-50%, -50%) scale(0.95) !important; filter: brightness(0.9); }
+        
         #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
-        #btn-start:active ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+        /* 文字跟隨按鈕縮放的邏輯較複雜，這裡暫時維持原樣或用 JS 連動，為求穩先用 CSS 兄弟選擇器配合 class */
+        #btn-start.pressed ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
 
         /* --- 6. 🏆 結算介面 (z-index 200) --- */
         #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
         
         #res-panel { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 201; }
-        /* 這是背景圖，讓它單純顯示 */
         #res-panel-rank { width: 547px; height: 653px; left: 361px; top: 598px; z-index: 202; }
         
-        /* [已修正] ★ 這裡就是你的「遮罩 (Mask)」 ★ */
+        /* 遮罩層 */
         #rank-content-layer {
             position: absolute; 
-            left: 361px; top: 598px; /* 跟 panel-rank 一樣置中 */
-            
-            /* 設定遮罩範圍：比底圖(547x653)稍微小一點，做出內距 */
+            left: 361px; top: 598px; 
             width: 500px; 
             height: 600px; 
-            
-            /* 圓角：配合手繪風的圓滑程度 */
             border-radius: 30px; 
-
-            /* ★關鍵：這行就是遮罩效果，超出這個框的都會被切掉 */
             overflow: hidden; 
-            
             transform: translate(-50%, -50%);
-            z-index: 203; /* 確保在底圖(#res-panel-rank)之上 */
+            z-index: 203;
         }
         
-        /* A. 滑動區域 - 確保它填滿遮罩容器 */
+        /* A. 滑動區域 */
         #rank-scroll-view {
             width: 100%;
-            height: 100%; /* 填滿父容器 */
-            overflow-y: scroll; /* 允許垂直捲動 */
-            
-            /* 讓捲動順滑 */
+            height: 100%;
+            overflow-y: scroll;
             -webkit-overflow-scrolling: touch;
-
-            /* 隱藏卷軸 */
             scrollbar-width: none; 
             -ms-overflow-style: none; 
-            
             display: flex;
             flex-direction: column;
             align-items: center;
-            
-            /* 內容的上下緩衝，避免第一筆跟最後一筆貼太死 */
             padding-top: 10px;
             padding-bottom: 20px; 
         }
@@ -127,9 +131,12 @@
 
         /* B. 排行榜單行樣式 */
         .rank-row {
-            width: 480px; /* 稍微比容器小一點，留左右間距 */
+            width: 480px; 
             height: 101px;
+            
+            /* [保留設定] 這裡是你剛剛指定的間距 */
             margin-bottom: -10px; 
+            
             background-image: url('assets/ui_rank_row_normal.webp');
             background-size: contain;
             background-repeat: no-repeat;
@@ -139,31 +146,28 @@
             color: #fff; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 2px #000;
         }
 
-        /* C. 固定底部 (玩家自己) */
+        /* C. 固定底部 */
         #rank-fixed-row {
             position: absolute;
             left: 360px; top: 855px; 
             width: 522px; height: 101px;
             transform: translate(-50%, -50%);
-            z-index: 205; /* 浮在最上面 */
+            z-index: 205; 
             background-image: url('assets/ui_rank_row_self.webp');
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
             display: flex; justify-content: space-around; align-items: center;
             color: #ffd700; font-size: 20px; font-weight: bold; text-shadow: 2px 2px 2px #000;
-            pointer-events: none; /* 讓點擊穿透，如果需要的話 */
+            pointer-events: none;
         }
 
-        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; }
-        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; }
-        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; }
+        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; touch-action: manipulation; }
+        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; touch-action: manipulation; }
+        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; touch-action: manipulation; }
         #ui-text-retry { width: 323px; height: 55px; left: 362px; top: 985px; z-index: 204; pointer-events: none; transition: transform 0.1s; }
 
-        #res-btn-coffee:active, #res-btn-share:active, #res-btn-retry:active {
-            transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9);
-        }
-        #res-btn-retry:active ~ #ui-text-retry {
+        #res-btn-retry.pressed ~ #ui-text-retry {
             transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9);
         }
 
@@ -233,7 +237,7 @@
         
         <div id="rank-content-layer">
             <div id="rank-scroll-view">
-                </div>
+            </div>
         </div>
 
         <div id="rank-fixed-row">
@@ -287,21 +291,54 @@
     window.addEventListener('load', resizeGame);
     resizeGame();
 
-    // --- 💀 初始化排行榜 (產生假資料) ---
+    // --- 💀 初始化排行榜 ---
     function initLeaderboard() {
         const list = document.getElementById('rank-scroll-view');
-        list.innerHTML = ''; // 清空
+        list.innerHTML = ''; 
         
-        // 增加資料數量讓你測試滑動效果
         for(let i=1; i<=100; i++) {
             const row = document.createElement('div');
             row.className = 'rank-row';
-            // 這裡先塞假文字方便你看位置，之後會換成圖片數字
             row.innerHTML = `<span>Rank ${i}</span><span>Player ${i}</span><span>${99999 - i*100}</span>`;
             list.appendChild(row);
         }
     }
-    initLeaderboard(); // 啟動時先跑一次
+    initLeaderboard(); 
+
+    // --- [JS優化] 按鈕回彈邏輯 ---
+    // 這個函式會讓按鈕在手指一放開瞬間就彈回來，不用等 CSS
+    function setupButtonFeedback(element, isCard = false) {
+        if (!element) return;
+        const pressClass = isCard ? 'pressed' : 'btn-pressed';
+
+        // 按下：立刻縮小
+        element.addEventListener('pointerdown', (e) => {
+            element.classList.add(pressClass);
+            element.setPointerCapture(e.pointerId); // 鎖定手指，滑出去也能追蹤
+        });
+
+        // 放開、離開、取消：立刻復原
+        const release = () => {
+            element.classList.remove(pressClass);
+        };
+        element.addEventListener('pointerup', release);
+        element.addEventListener('pointerleave', release);
+        element.addEventListener('pointercancel', release);
+    }
+
+    // 1. 套用優化到所有九宮格按鈕
+    document.querySelectorAll('.card-slot').forEach(slot => {
+        setupButtonFeedback(slot, true);
+    });
+
+    // 2. 套用優化到主要 UI 按鈕
+    setupButtonFeedback(document.getElementById('btn-start'));
+    setupButtonFeedback(document.getElementById('btn-coffee'));
+    setupButtonFeedback(document.getElementById('btn-share'));
+    setupButtonFeedback(document.getElementById('res-btn-retry'));
+    setupButtonFeedback(document.getElementById('res-btn-coffee'));
+    setupButtonFeedback(document.getElementById('res-btn-share'));
+
 
     // --- 顯示結算介面 ---
     function showResultScreen() {
@@ -400,6 +437,7 @@
     }
 
     document.querySelectorAll('.card-slot').forEach((slot, i) => {
+        // click 依舊負責邏輯，視覺交給 pointer 事件
         slot.addEventListener('click', () => setGridNumber(i, Math.floor(Math.random() * 99999) + 1));
     });
 
