@@ -22,45 +22,37 @@
         /* --- 1. 背景與角色 --- */
         #bg-main { width: 720px; height: 1280px; left: 360px; top: 640px; z-index: 0; }
         
-        /* [修正] 背景閃電 VFX - 移除混合模式，還原真實色彩 */
+        /* [修正] 背景閃電 VFX - 常駐亮著 + 原色顯示 */
         .vfx-thunder {
-            width: 244px;
-            height: 234px;
-            z-index: 1; 
-            pointer-events: none;
+            width: 244px; height: 234px; z-index: 1; pointer-events: none;
             
             /* 常駐顯示 */
             opacity: 1; 
             
-            /* [重要修正] 移除 mix-blend-mode: screen; 讓圖片顯示原色 */
+            /* [重要] 移除 mix-blend-mode 讓圖片顯示原色 */
             /* mix-blend-mode: screen; */ 
         }
 
         /* 左邊閃電 (5秒閃爍一次) */
         #vfx-thunder-left {
-            left: 11px;
-            top: 291px;
-            transform: translate(-50%, -50%) scaleX(-1);
+            left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1);
             animation: thunder-flicker-off 5s infinite; 
         }
 
         /* 右邊閃電 (7秒閃爍一次) */
         #vfx-thunder-right {
-            left: 711px;
-            top: 293px;
-            transform: translate(-50%, -50%);
-            animation: thunder-flicker-off 7s infinite 2s; /* 錯開時間 */
+            left: 711px; top: 293px; transform: translate(-50%, -50%);
+            animation: thunder-flicker-off 7s infinite 2s; 
         }
 
-        /* 反向閃爍動畫：亮 -> 暗 -> 亮 */
+        /* [修正] 反向閃爍動畫：亮 -> 暗 -> 亮 (模擬接觸不良) */
         @keyframes thunder-flicker-off {
-            0%, 90% { opacity: 1; }   /* 90%的時間都是亮的 */
-            91% { opacity: 0; }       /* 瞬間斷電 */
-            92% { opacity: 1; }       /* 回復 */
-            93% { opacity: 0.2; }     /* 電壓不穩 */
+            0%, 92% { opacity: 1; }   /* 絕大部分時間是亮的 */
+            93% { opacity: 0; }       /* 瞬間斷電 */
             94% { opacity: 1; }       /* 回復 */
-            95% { opacity: 0.5; }     /* 微暗 */
-            100% { opacity: 1; }      /* 回到穩定亮 */
+            95% { opacity: 0.3; }     /* 電壓不穩 */
+            96% { opacity: 1; }       /* 回復 */
+            100% { opacity: 1; }
         }
 
         #ui-character-bear { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; }
@@ -75,37 +67,18 @@
         .timer-digit { height: 100%; width: 50px; object-fit: contain; margin: 0 -3px; }
         .timer-colon-slot { height: 60%; width: 30px; object-fit: contain; margin-top: -5px; }
 
-        /* --- 3. 遊戲核心 UI --- */
-        #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 10; }
-        #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 10; }
-        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 11; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
-        #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 12; pointer-events: none; }
+        /* --- 3. 遊戲核心 UI (Combo Bar & Text) --- */
+        /* [修正] 提升 Z-index 到 20，確保不被九宮格遮擋 */
+        #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 20; }
+        #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 20; }
+        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
+        #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 22; pointer-events: none; }
         
         /* 遊戲中積分顯示 */
         #ui-game-score {
             position: absolute; left: 402px; width: 300px; top: 100px; transform: translateY(-50%);
             display: flex; justify-content: flex-end; color: rgb(51, 206, 15); font-size: 33px; 
             font-family: monospace; font-style: italic; font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5); z-index: 30; pointer-events: none;
-        }
-
-        /* HIT 特效容器 */
-        .hit-effect-wrapper {
-            position: absolute; 
-            display: flex; flex-direction: row; align-items: center; justify-content: center;
-            gap: 5px; pointer-events: none; z-index: 150;
-            transform: translate(-50%, -50%);
-            /* 動畫：時間1.5s，長距離飛行 */
-            animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
-        }
-
-        .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -2px; }
-        .hit-text-img { width: 74px; height: 38px; object-fit: contain; margin-left: 5px; }
-
-        /* 長距離飛行動畫 */
-        @keyframes hit-float {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            10% { transform: translate(-50%, -150%) scale(1.3); opacity: 1; } 
-            100% { transform: translate(-50%, -450%) scale(1.0); opacity: 0; } 
         }
 
         /* 九宮格按鈕 */
@@ -125,9 +98,24 @@
         /* 星星粒子特效 */
         .particle-star {
             position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 99; 
-            transform-origin: center; 
-            transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; 
-            opacity: 1;
+            transform-origin: center; transition: transform 0.6s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.6s ease-in; opacity: 1;
+        }
+
+        /* HIT 特效容器 */
+        .hit-effect-wrapper {
+            position: absolute; 
+            display: flex; flex-direction: row; align-items: center; justify-content: center;
+            gap: 5px; pointer-events: none; z-index: 150;
+            transform: translate(-50%, -50%);
+            animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+        }
+        .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -2px; }
+        .hit-text-img { width: 74px; height: 38px; object-fit: contain; margin-left: 5px; }
+
+        @keyframes hit-float {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            10% { transform: translate(-50%, -150%) scale(1.3); opacity: 1; } 
+            100% { transform: translate(-50%, -450%) scale(1.0); opacity: 0; } 
         }
 
         /* HUD Icons */
@@ -253,8 +241,10 @@
 
 <div id="game-container">
     <img src="assets/bg_main.webp" class="ui-element" id="bg-main">
+    
     <img src="assets/vfx_thunder.webp" class="ui-element vfx-thunder" id="vfx-thunder-left">
     <img src="assets/vfx_thunder.webp" class="ui-element vfx-thunder" id="vfx-thunder-right">
+
     <img src="assets/character_bear.webp" class="ui-element" id="ui-character-bear">
     <img src="assets/panel_main.webp" class="ui-element" id="ui-panel-main">
 
@@ -270,7 +260,13 @@
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-2">
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
     <img src="assets/icon_star.webp" class="ui-element" id="ui-icon-star">
+    
     <div id="ui-game-score">00000000</div>
+
+    <img src="assets/ui_text_combo_time.webp" class="ui-element" id="ui-text-combo-time">
+    <img src="assets/ui_combo_bar_bg.webp" class="ui-element" id="ui-combo-bar-bg">
+    <img src="assets/ui_combo_bar_fill.webp" class="ui-element" id="ui-combo-bar-fill">
+    <img src="assets/ui_combo_bar_cover.webp" class="ui-element" id="ui-combo-bar-cover">
 
     <div id="game-grid">
         <div class="card-slot" style="left: 130px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_1.webp"></div></div>
@@ -356,6 +352,7 @@
 <script>
     let gameTimer = null;
     let timeLeft = 6000;
+    // 連擊計數器
     let comboCount = 0;
 
     const timerEls = {
