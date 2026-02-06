@@ -22,40 +22,46 @@
         /* --- 1. 背景與角色 --- */
         #bg-main { width: 720px; height: 1280px; left: 360px; top: 640px; z-index: 0; }
         
-        /* [修正] 背景閃電 VFX - 常駐亮著 + 原色顯示 */
-        .vfx-thunder {
-            width: 244px; height: 234px; z-index: 1; pointer-events: none;
-            
-            /* 常駐顯示 */
-            opacity: 1; 
-            
-            /* [重要] 移除 mix-blend-mode 讓圖片顯示原色 */
-            /* mix-blend-mode: screen; */ 
-        }
+        /* 背景閃電 VFX */
+        .vfx-thunder { width: 244px; height: 234px; z-index: 1; pointer-events: none; opacity: 1; }
+        #vfx-thunder-left { left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1); animation: thunder-flicker-off 5s infinite; }
+        #vfx-thunder-right { left: 711px; top: 293px; transform: translate(-50%, -50%); animation: thunder-flicker-off 7s infinite 2s; }
 
-        /* 左邊閃電 (5秒閃爍一次) */
-        #vfx-thunder-left {
-            left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1);
-            animation: thunder-flicker-off 5s infinite; 
-        }
-
-        /* 右邊閃電 (7秒閃爍一次) */
-        #vfx-thunder-right {
-            left: 711px; top: 293px; transform: translate(-50%, -50%);
-            animation: thunder-flicker-off 7s infinite 2s; 
-        }
-
-        /* [修正] 反向閃爍動畫：亮 -> 暗 -> 亮 (模擬接觸不良) */
         @keyframes thunder-flicker-off {
-            0%, 92% { opacity: 1; }   /* 絕大部分時間是亮的 */
-            93% { opacity: 0; }       /* 瞬間斷電 */
-            94% { opacity: 1; }       /* 回復 */
-            95% { opacity: 0.3; }     /* 電壓不穩 */
-            96% { opacity: 1; }       /* 回復 */
-            100% { opacity: 1; }
+            0%, 92% { opacity: 1; } 93% { opacity: 0; } 94% { opacity: 1; } 95% { opacity: 0.3; } 96% { opacity: 1; } 100% { opacity: 1; }
         }
 
-        #ui-character-bear { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; }
+        /* 角色設定 */
+        #ui-character-bear, #ui-character-devil { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; transition: filter 0.1s; }
+        
+        /* 惡魔熊預設隱藏 */
+        #ui-character-devil { display: none; }
+
+        /* [修正] 角色動畫 - 受傷微幅抖動 (無閃光) */
+        @keyframes anim-shake {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            25% { transform: translate(-51%, -50%) rotate(-1deg); } /* 左移 1% */
+            50% { transform: translate(-49%, -50%) rotate(1deg); }  /* 右移 1% */
+            75% { transform: translate(-50.5%, -50%) rotate(-0.5deg); }
+            100% { transform: translate(-50%, -50%) rotate(0deg); }
+        }
+        .effect-shake { animation: anim-shake 0.15s ease-in-out; } /* 時間縮短一點點讓震動感更俐落 */
+
+        /* 角色動畫 - 下沉消失 */
+        @keyframes anim-sink {
+            0% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(0); }
+            20% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(1); }
+            100% { transform: translate(-50%, -20%); opacity: 0; filter: grayscale(1); }
+        }
+        .effect-sink { animation: anim-sink 1.0s ease-in forwards; }
+
+        /* 角色動畫 - 上升出現 */
+        @keyframes anim-rise {
+            0% { transform: translate(-50%, -20%); opacity: 0; }
+            100% { transform: translate(-50%, -50%); opacity: 1; }
+        }
+        .effect-rise { display: block !important; animation: anim-rise 0.8s ease-out forwards; }
+
         #ui-panel-main { width: 720px; height: 810px; left: 360px; top: 875px; z-index: 5; }
         
         /* --- 2. ⏳ 計時器容器 --- */
@@ -67,8 +73,7 @@
         .timer-digit { height: 100%; width: 50px; object-fit: contain; margin: 0 -3px; }
         .timer-colon-slot { height: 60%; width: 30px; object-fit: contain; margin-top: -5px; }
 
-        /* --- 3. 遊戲核心 UI (Combo Bar & Text) --- */
-        /* [修正] 提升 Z-index 到 20，確保不被九宮格遮擋 */
+        /* --- 3. 遊戲核心 UI --- */
         #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 20; }
         #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 20; }
         #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
@@ -77,39 +82,18 @@
         /* 遊戲中積分顯示 */
         #ui-game-score {
             position: absolute; left: 402px; width: 300px; top: 100px; transform: translateY(-50%);
-            display: flex; justify-content: flex-end; color: rgb(51, 206, 15); font-size: 33px; 
-            font-family: monospace; font-style: italic; font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5); z-index: 30; pointer-events: none;
+            display: flex; justify-content: flex-end; align-items: center; z-index: 30; pointer-events: none; gap: 1px;
         }
-
-        /* 九宮格按鈕 */
-        #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .card-slot { 
-            position: absolute; width: 230px; height: 230px; 
-            transform: translate(-50%, -50%); 
-            pointer-events: auto; cursor: pointer; 
-            transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1); 
-            touch-action: manipulation; 
-        }
-        .card-slot.pressed { transform: translate(-50%, -50%) scale(0.92) !important; filter: brightness(0.9); }
-        .btn-card-base { width: 100%; height: 100%; display: block; }
-        .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
-        .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
-
-        /* 星星粒子特效 */
-        .particle-star {
-            position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 99; 
-            transform-origin: center; transition: transform 0.6s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.6s ease-in; opacity: 1;
-        }
+        /* 積分數字大小 20px */
+        .score-digit-img { height: 20px; width: auto; object-fit: contain; }
 
         /* HIT 特效容器 */
         .hit-effect-wrapper {
-            position: absolute; 
-            display: flex; flex-direction: row; align-items: center; justify-content: center;
-            gap: 5px; pointer-events: none; z-index: 150;
-            transform: translate(-50%, -50%);
+            position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: center;
+            gap: 5px; pointer-events: none; z-index: 150; transform: translate(-50%, -50%);
             animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
         }
-        .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -2px; }
+        .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -10px; }
         .hit-text-img { width: 74px; height: 38px; object-fit: contain; margin-left: 5px; }
 
         @keyframes hit-float {
@@ -118,14 +102,25 @@
             100% { transform: translate(-50%, -450%) scale(1.0); opacity: 0; } 
         }
 
-        /* HUD Icons */
+        /* 九宮格按鈕 */
+        #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .card-slot { 
+            position: absolute; width: 230px; height: 230px; transform: translate(-50%, -50%); 
+            pointer-events: auto; cursor: pointer; transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1); touch-action: manipulation; 
+        }
+        .card-slot.pressed { transform: translate(-50%, -50%) scale(0.92) !important; filter: brightness(0.9); }
+        .btn-card-base { width: 100%; height: 100%; display: block; }
+        .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
+        .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
+
+        .particle-star { position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 99; transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; }
+
         .hud-item { z-index: 15; transition: opacity 0.2s; }
         #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
         #ui-heart-2 { width: 44px; height: 38px; left: 101px; top: 100px; }
         #ui-heart-3 { width: 44px; height: 38px; left: 149px; top: 100px; }
         #ui-icon-star { width: 44px; height: 44px; left: 528px; top: 99px; z-index: 15; }
 
-        /* --- 4. 倒數動畫 --- */
         .countdown-img { z-index: 50; display: none; pointer-events: none; }
         @keyframes popIn {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
@@ -150,7 +145,6 @@
         #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
         
         .btn-pressed { transform: translate(-50%, -50%) scale(0.95) !important; filter: brightness(0.9); }
-        
         #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
         #btn-start.pressed ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
 
@@ -158,79 +152,53 @@
         #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
         #res-panel { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 201; }
         #res-panel-rank { width: 547px; height: 653px; left: 361px; top: 598px; z-index: 202; }
-        
-        /* 標題 Logo */
         #logo-rank-title { width: 378px; height: 162px; left: 360px; top: 184px; z-index: 205; }
 
-        /* 遮罩層 */
         #rank-content-layer {
             position: absolute; left: 361px; top: 598px; 
-            width: 540px; 
-            height: 600px; 
+            width: 540px; height: 600px; 
             border-radius: 30px; overflow: hidden; transform: translate(-50%, -50%); z-index: 203;
         }
-        
         #rank-scroll-view {
             width: 100%; height: 100%; overflow-y: scroll; -webkit-overflow-scrolling: touch;
             scrollbar-width: none; -ms-overflow-style: none; 
             display: flex; flex-direction: column; align-items: center;
-            padding-top: 10px; 
-            padding-bottom: 120px; 
+            padding-top: 10px; padding-bottom: 120px; 
         }
         #rank-scroll-view::-webkit-scrollbar { display: none; }
 
-        /* [排行榜 絕對座標對位] */
         .rank-row {
-            width: 522px; 
-            height: 101px; 
-            margin-bottom: -2px; 
+            width: 522px; height: 101px; margin-bottom: -2px; 
             background-image: url('assets/ui_rank_row_normal.webp');
             background-size: contain; background-repeat: no-repeat; background-position: center;
             flex-shrink: 0; position: relative; 
             font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
         }
+        .rank-num { position: absolute; left: 20px; width: 82px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 222, 0); font-size: 40px; font-style: normal; white-space: nowrap; }
+        .rank-name { position: absolute; left: 106px; width: 152px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 255, 255); font-size: 28px; white-space: nowrap; overflow: hidden; }
+        .rank-flag { position: absolute; left: 260px; top: 50%; transform: translateY(-50%); font-size: 28px; font-style: normal; text-shadow: none; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); z-index: 2; }
+        .rank-score { position: absolute; left: 258px; width: 240px; top: 50%; transform: translateY(-50%); display: flex; justify-content: flex-end; align-items: center; gap: -2px; }
+        
+        /* 排行榜積分數字大小 28px */
+        .rank-score-digit { height: 28px; width: auto; object-fit: contain; }
 
-        .rank-num {
-            position: absolute; left: 20px; width: 82px; top: 50%; transform: translateY(-50%);
-            text-align: left; color: rgb(255, 222, 0); font-size: 40px; font-style: normal; white-space: nowrap; 
-        }
-
-        .rank-name {
-            position: absolute; left: 106px; width: 152px; top: 50%; transform: translateY(-50%);
-            text-align: left; color: rgb(255, 255, 255); font-size: 28px; white-space: nowrap; overflow: hidden;
-        }
-
-        .rank-flag {
-            position: absolute; left: 260px; top: 50%; transform: translateY(-50%);
-            font-size: 28px; font-style: normal; text-shadow: none; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); z-index: 2; 
-        }
-
-        .rank-score {
-            position: absolute; left: 258px; width: 240px; top: 50%; transform: translateY(-50%);
-            display: flex; justify-content: flex-end; align-items: center;
-            color: rgb(51, 206, 15); font-size: 40px; font-family: monospace; font-style: italic;
-        }
-
-        /* C. 固定底部 (自己) */
         #rank-fixed-row {
             position: absolute; left: 360px; top: 855px; width: 522px; height: 101px;
             transform: translate(-50%, -50%); z-index: 205; 
             background-image: url('assets/ui_rank_row_self.webp');
             background-size: contain; background-repeat: no-repeat; background-position: center;
-            font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5); pointer-events: none;
+            font-weight: 900; pointer-events: none;
         }
 
-        #res-btn-coffee, #res-btn-share, #res-btn-retry { z-index: 203; cursor: pointer; touch-action: manipulation; }
-        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; }
-        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; }
-        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; }
+        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; }
+        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; }
+        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; }
         #ui-text-retry { width: 323px; height: 55px; left: 362px; top: 985px; z-index: 204; pointer-events: none; transition: transform 0.1s; }
         #res-btn-retry.pressed ~ #ui-text-retry { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
 
         #bg-bar-top { width: 720px; height: 53px; left: 360px; top: 27px; z-index: 20; }
         #bg-bar-bottom { width: 720px; height: 69px; left: 360px; top: 1246px; z-index: 20; }
 
-        /* Debug 面板 */
         #debug-panel { position: fixed; top: 10px; right: 10px; z-index: 999; background: rgba(0,0,0,0.9); color: #fff; padding: 12px; border-radius: 8px; width: 210px; font-family: monospace; }
         .debug-group { margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 8px; }
         .debug-group label { display: block; font-size: 11px; color: #ffeb3b; margin-bottom: 5px; }
@@ -241,11 +209,12 @@
 
 <div id="game-container">
     <img src="assets/bg_main.webp" class="ui-element" id="bg-main">
-    
     <img src="assets/vfx_thunder.webp" class="ui-element vfx-thunder" id="vfx-thunder-left">
     <img src="assets/vfx_thunder.webp" class="ui-element vfx-thunder" id="vfx-thunder-right">
-
+    
     <img src="assets/character_bear.webp" class="ui-element" id="ui-character-bear">
+    <img src="assets/character_bear_devil.webp" class="ui-element" id="ui-character-devil">
+
     <img src="assets/panel_main.webp" class="ui-element" id="ui-panel-main">
 
     <div id="ui-timer-container">
@@ -261,7 +230,7 @@
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
     <img src="assets/icon_star.webp" class="ui-element" id="ui-icon-star">
     
-    <div id="ui-game-score">00000000</div>
+    <div id="ui-game-score"></div>
 
     <img src="assets/ui_text_combo_time.webp" class="ui-element" id="ui-text-combo-time">
     <img src="assets/ui_combo_bar_bg.webp" class="ui-element" id="ui-combo-bar-bg">
@@ -312,7 +281,7 @@
             <span class="rank-num">6</span>
             <span class="rank-name">YOU</span>
             <span class="rank-flag">🇹🇼</span>
-            <span class="rank-score">00012345</span>
+            <div class="rank-score" id="my-rank-score-container"></div>
         </div>
         
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
@@ -329,6 +298,7 @@
     <div class="debug-group">
         <label>畫面測試</label>
         <button class="debug-btn" onclick="showResultScreen()" style="background:#f57c00; border-color:#ffb74d;">💀 顯示結算介面</button>
+        <button class="debug-btn" onclick="triggerBearDeath()" style="background:#d32f2f; border-color:#ef5350;">🐻 測試變身</button>
     </div>
     <div class="debug-group">
         <label>遊戲流程</label>
@@ -352,8 +322,12 @@
 <script>
     let gameTimer = null;
     let timeLeft = 6000;
-    // 連擊計數器
     let comboCount = 0;
+    let currentScore = 0;
+    
+    // 輸入冷卻變數
+    let lastInputTime = 0;
+    const INPUT_COOLDOWN = 60; // 60ms 冷卻
 
     const timerEls = {
         d1: document.getElementById('timer-d1'),
@@ -371,6 +345,9 @@
     window.addEventListener('load', () => {
         resizeGame();
         preloadGameAssets();
+        setupButtonFeedback();
+        updateScoreDisplay(0); 
+        initLeaderboard(); 
     });
 
     function preloadGameAssets() {
@@ -382,62 +359,48 @@
             'ui_rank_row_normal.webp', 'ui_rank_row_self.webp', 'logo_rank_title.webp',
             'icon_star.webp', 
             'vfx_thunder.webp',
-            'ui_text_hit.webp'
+            'ui_text_hit.webp',
+            'character_bear_devil.webp' 
         ];
         assets.forEach(name => {
             const img = new Image();
             img.src = 'assets/' + name;
         });
-        console.log("Assets preloading started...");
     }
 
     function createStarBurst(x, y) {
         const container = document.getElementById('game-container');
         const count = Math.floor(Math.random() * 3) + 4; 
-
         for (let i = 0; i < count; i++) {
             const star = document.createElement('img');
             star.src = 'assets/icon_star.webp';
             star.className = 'particle-star';
-
-            // 巨大化星星
             const size = Math.random() * 40 + 80; 
             star.style.width = `${size}px`;
             star.style.height = `${size}px`;
-
             star.style.left = `${x}px`;
             star.style.top = `${y}px`;
             star.style.transform = `translate(-50%, -50%) scale(0.5)`;
-
             const angle = Math.random() * Math.PI * 2; 
-            // 噴發力道
             const velocity = Math.random() * 150 + 100; 
             const tx = Math.cos(angle) * velocity;
             const ty = Math.sin(angle) * velocity;
             const rot = Math.random() * 720; 
-
             container.appendChild(star);
-
             requestAnimationFrame(() => {
                 star.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0) rotate(${rot}deg)`;
                 star.style.opacity = '0';
             });
-
-            setTimeout(() => {
-                star.remove();
-            }, 800); // 星星時間 0.8s
+            setTimeout(() => star.remove(), 800);
         }
     }
 
-    // 產生 HIT 數值特效
     function createHitEffect(x, y, comboVal) {
         const container = document.getElementById('game-container');
         const wrapper = document.createElement('div');
         wrapper.className = 'hit-effect-wrapper';
         wrapper.style.left = `${x}px`;
         wrapper.style.top = `${y - 50}px`; 
-
-        // 1. 產生數字 (在左邊)
         const valStr = comboVal.toString();
         for (let char of valStr) {
             const digit = document.createElement('img');
@@ -445,23 +408,38 @@
             digit.className = 'hit-num-digit';
             wrapper.appendChild(digit);
         }
-
-        // 2. 產生 HIT 字樣 (在右邊)
         const hitImg = document.createElement('img');
         hitImg.src = 'assets/ui_text_hit.webp';
         hitImg.className = 'hit-text-img';
         wrapper.appendChild(hitImg);
-
         container.appendChild(wrapper);
+        setTimeout(() => wrapper.remove(), 1500); 
+    }
 
-        // 延長到 1.5s 移除
-        setTimeout(() => {
-            wrapper.remove();
-        }, 1500); 
+    function updateScoreDisplay(newScore) {
+        const scoreContainer = document.getElementById('ui-game-score');
+        scoreContainer.innerHTML = ''; 
+        const scoreStr = newScore.toString().padStart(8, '0');
+        for (let char of scoreStr) {
+            const img = document.createElement('img');
+            img.src = `assets/num_grid_${char}.webp`;
+            img.className = 'score-digit-img';
+            scoreContainer.appendChild(img);
+        }
+    }
+
+    function getScoreHtml(score) {
+        const str = score.toString().padStart(8, '0');
+        let html = '';
+        for(let char of str) {
+            html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
+        }
+        return html;
     }
 
     function initLeaderboard() {
         const list = document.getElementById('rank-scroll-view');
+        if(!list) return;
         list.innerHTML = ''; 
         
         const flags = ['🇹🇼', '🇯🇵', '🇺🇸', '🇰🇷', '🇨🇦', '🇬🇧', '🇦🇺', '🇫🇷', '🇩🇪', '🇹🇭'];
@@ -474,7 +452,6 @@
             let nameRaw = `Player${i}`;
             const nameStr = nameRaw.substring(0, 8); 
             let scoreRaw = 99999 - i * 100;
-            const scoreStr = scoreRaw.toString().padStart(8, '0');
             const flagEmoji = flags[i % flags.length];
 
             let rankFontSize = '40px'; 
@@ -485,30 +462,66 @@
                 <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
                 <span class="rank-name">${nameStr}</span>
                 <span class="rank-flag">${flagEmoji}</span>
-                <span class="rank-score">${scoreStr}</span>
+                <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
             `;
             list.appendChild(row);
         }
+
+        const myScoreContainer = document.getElementById('my-rank-score-container');
+        if(myScoreContainer) {
+            myScoreContainer.innerHTML = getScoreHtml(12345);
+        }
     }
-    initLeaderboard(); 
+
+    function handleBearHit() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        
+        const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
+        
+        activeBear.classList.remove('effect-shake');
+        void activeBear.offsetWidth; 
+        activeBear.classList.add('effect-shake');
+        
+        setTimeout(() => {
+            activeBear.classList.remove('effect-shake');
+        }, 200);
+    }
+
+    function triggerBearDeath() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+
+        bearNormal.classList.add('effect-sink');
+
+        setTimeout(() => {
+            bearNormal.style.display = 'none'; 
+            bearDevil.style.display = 'block'; 
+            bearDevil.classList.add('effect-rise');
+        }, 1000); 
+    }
 
     function setupButtonFeedback(element, isCard = false) {
         if (!element) return;
         const pressClass = isCard ? 'pressed' : 'btn-pressed';
         element.addEventListener('pointerdown', (e) => {
+            const now = Date.now();
+            if (now - lastInputTime < INPUT_COOLDOWN) return; 
+            lastInputTime = now;
+
             element.classList.add(pressClass);
             element.setPointerCapture(e.pointerId);
 
             if (isCard) {
                 const cx = parseInt(element.style.left);
                 const cy = parseInt(element.style.top);
-                
-                // 觸發星星
                 createStarBurst(cx, cy);
-                
-                // 觸發 Combo 顯示
                 comboCount++; 
                 createHitEffect(cx, cy, comboCount);
+                currentScore += 100;
+                updateScoreDisplay(currentScore);
+                
+                handleBearHit();
             }
         });
         const release = () => { element.classList.remove(pressClass); };
@@ -548,7 +561,9 @@
     function startGameTimer() {
         stopGameTimer();
         timeLeft = 6000;
-        comboCount = 0; // 重置 combo
+        comboCount = 0; 
+        currentScore = 0; 
+        updateScoreDisplay(currentScore);
         updateTimerDisplay(timeLeft);
         gameTimer = setInterval(() => {
             timeLeft--;
