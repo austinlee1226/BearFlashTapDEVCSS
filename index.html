@@ -112,9 +112,12 @@
         }
         #rank-scroll-view::-webkit-scrollbar { display: none; }
 
-        /* ========================================= */
-        /* [修改] B. 排行榜單行樣式 (移除黑邊)       */
-        /* ========================================= */
+        /* ========================================================= */
+        /* [排行榜 絕對座標對位]                                      */
+        /* 底板寬480px，居中後左邊界為 (720-480)/2 = 120px            */
+        /* left 數值皆為相對底板左側                                  */
+        /* ========================================================= */
+        
         .rank-row {
             width: 480px; 
             height: 101px; 
@@ -124,63 +127,81 @@
             background-repeat: no-repeat; 
             background-position: center;
             flex-shrink: 0; 
-            display: flex; 
-            align-items: center;
-            padding: 0 20px;
-
-            /* 共用設定：粗體、陰影 (移除 -webkit-text-stroke) */
+            
+            position: relative; /* 讓子元素參照此框 */
+            
+            /* 共用：粗體、無黑邊、有陰影 */
             font-weight: 900; 
             text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
         }
 
-        /* 1. 名次 (黃色) */
+        /* 1. 名次 */
         .rank-num {
+            position: absolute;
+            left: 24px;
+            width: 82px;
+            top: 50%; transform: translateY(-50%);
+            text-align: left;
             color: rgb(255, 222, 0); 
-            font-size: 40px; 
-            font-style: italic; 
-            width: 15%; 
-            text-align: center;
+            font-size: 36px; /* 預設大小，JS 會自動調整 */
+            font-style: normal;
+            white-space: nowrap; 
         }
 
-        /* 2. 姓名 (白色) */
+        /* 2. 姓名 */
         .rank-name {
+            position: absolute;
+            left: 106px;
+            width: 152px;
+            top: 50%; transform: translateY(-50%);
+            text-align: left;
             color: rgb(255, 255, 255);
             font-size: 28px;
-            width: 50%;
-            text-align: center;
             white-space: nowrap;
+            overflow: hidden;
         }
 
-        /* 3. 積分 (綠色) + 國旗 */
-        .rank-score {
-            color: rgb(51, 206, 15);
-            font-size: 32px;
-            width: 35%;
-            padding-right: 10px;
-            font-family: monospace;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 8px; 
-        }
-
-        /* 國旗專用：保持無外框，加上濾鏡陰影 */
+        /* 3. [獨立] 國籍 Flag */
+        /* [更新] left: 260px */
         .rank-flag {
+            position: absolute;
+            left: 260px; /* 更新為你的設定 */
+            top: 50%; transform: translateY(-50%);
+            
             font-size: 28px;
             font-style: normal;
             text-shadow: none;
             filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5));
+            z-index: 2; 
         }
 
-        /* [修改] C. 固定底部 (你自己) - 移除黑邊 */
+        /* 4. 積分 */
+        /* [更新] width: 190px */
+        .rank-score {
+            position: absolute;
+            left: 258px;   
+            width: 190px;  /* 更新為你的設定 */
+            
+            top: 50%; transform: translateY(-50%);
+            
+            /* 靠右對齊 (flex-end) */
+            display: flex;
+            justify-content: flex-end; 
+            align-items: center;
+            
+            color: rgb(51, 206, 15);
+            font-size: 32px;
+            font-family: monospace;
+            font-style: italic;
+        }
+
+        /* C. 固定底部 (自己) */
         #rank-fixed-row {
             position: absolute; left: 360px; top: 855px; width: 522px; height: 101px;
             transform: translate(-50%, -50%); z-index: 205; 
             background-image: url('assets/ui_rank_row_self.webp');
             background-size: contain; background-repeat: no-repeat; background-position: center;
             
-            display: flex; align-items: center; padding: 0 20px;
-            /* 移除 -webkit-text-stroke */
             font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
             pointer-events: none;
         }
@@ -270,10 +291,8 @@
         <div id="rank-fixed-row">
             <span class="rank-num">6</span>
             <span class="rank-name">YOU</span>
-            <span class="rank-score">
-                <span class="rank-flag">🇹🇼</span>
-                00012345
-            </span>
+            <span class="rank-flag">🇹🇼</span>
+            <span class="rank-score">00012345</span>
         </div>
         
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
@@ -347,7 +366,7 @@
         console.log("Assets preloading started...");
     }
 
-    // 排行榜初始化 (含 Emoji 國旗)
+    // [修改] 排行榜初始化 - 自動縮放排名
     function initLeaderboard() {
         const list = document.getElementById('rank-scroll-view');
         list.innerHTML = ''; 
@@ -365,13 +384,16 @@
             const scoreStr = scoreRaw.toString().padStart(8, '0');
             const flagEmoji = flags[i % flags.length];
 
+            // --- [新增] 排名縮放邏輯 ---
+            let rankFontSize = '36px'; // 預設
+            if (i >= 1000) rankFontSize = '30px'; // 4位數
+            if (i >= 10000) rankFontSize = '24px'; // 5位數
+
             row.innerHTML = `
-                <span class="rank-num">${rankStr}</span>
+                <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
                 <span class="rank-name">${nameStr}</span>
-                <span class="rank-score">
-                    <span class="rank-flag">${flagEmoji}</span>
-                    ${scoreStr}
-                </span>
+                <span class="rank-flag">${flagEmoji}</span>
+                <span class="rank-score">${scoreStr}</span>
             `;
             list.appendChild(row);
         }
