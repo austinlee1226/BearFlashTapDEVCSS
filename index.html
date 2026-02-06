@@ -24,10 +24,18 @@
         #ui-character-bear { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; }
         #ui-panel-main { width: 720px; height: 810px; left: 360px; top: 875px; z-index: 5; }
         
-        /* --- 2. ⏳ 計時器容器 --- */
+        /* --- 2. ⏳ 計時器容器 (修正版) --- */
         #ui-timer-container {
-            position: absolute; left: 348px; top: 98px; width: 300px; height: 80px;
-            transform: translate(-50%, -50%); z-index: 30;
+            position: absolute; 
+            left: 360px; /* [修正] 回到正中心 */
+            top: 98px; 
+            width: 300px; 
+            height: 80px;
+            
+            /* [修正] 使用 scale(1.2) 替代 zoom，並鎖定中心點 */
+            transform: translate(-50%, -50%) scale(1.2);
+            
+            z-index: 30;
             display: flex; justify-content: center; align-items: center; 
             gap: 0; pointer-events: none;
         }
@@ -40,6 +48,27 @@
         #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 11; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 12; pointer-events: none; }
         
+        /* 遊戲中積分顯示 (HUD Score) */
+        #ui-game-score {
+            position: absolute;
+            left: 402px; /* 702 - 300 */
+            width: 300px;
+            top: 100px; 
+            transform: translateY(-50%);
+
+            display: flex;
+            justify-content: flex-end; 
+
+            color: rgb(51, 206, 15); 
+            font-size: 33px; /* 字體大小 33px */
+            font-family: monospace;
+            font-style: italic; 
+            font-weight: 900;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+            z-index: 30;
+            pointer-events: none;
+        }
+
         /* 九宮格按鈕 */
         #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .card-slot { 
@@ -54,7 +83,7 @@
         .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
         .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
 
-        /* HUD */
+        /* HUD Icons */
         .hud-item { z-index: 15; transition: opacity 0.2s; }
         #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
         #ui-heart-2 { width: 44px; height: 38px; left: 101px; top: 100px; }
@@ -98,9 +127,11 @@
         /* 標題 Logo */
         #logo-rank-title { width: 378px; height: 162px; left: 360px; top: 184px; z-index: 205; }
 
-        /* 遮罩層 */
+        /* 遮罩層 (包含滾動區域) */
         #rank-content-layer {
-            position: absolute; left: 361px; top: 598px; width: 500px; height: 600px; 
+            position: absolute; left: 361px; top: 598px; 
+            width: 540px; /* 寬度 540px 避免切邊 */
+            height: 600px; 
             border-radius: 30px; overflow: hidden; transform: translate(-50%, -50%); z-index: 203;
         }
         
@@ -108,42 +139,41 @@
             width: 100%; height: 100%; overflow-y: scroll; -webkit-overflow-scrolling: touch;
             scrollbar-width: none; -ms-overflow-style: none; 
             display: flex; flex-direction: column; align-items: center;
-            padding-top: 10px; padding-bottom: 20px; 
+            padding-top: 10px; 
+            padding-bottom: 120px; /* 底部加高，避免被自己遮住 */
         }
         #rank-scroll-view::-webkit-scrollbar { display: none; }
 
         /* ========================================================= */
-        /* [排行榜 絕對座標對位]                                      */
-        /* 底板寬480px，居中後左邊界為 (720-480)/2 = 120px            */
-        /* left 數值皆為相對底板左側                                  */
+        /* [排行榜 絕對座標對位 - F12 最終版]                         */
+        /* 底板 522px, margin -2px                                   */
         /* ========================================================= */
         
         .rank-row {
-            width: 480px; 
+            width: 522px; 
             height: 101px; 
-            margin-bottom: -10px; 
+            margin-bottom: -2px; 
             background-image: url('assets/ui_rank_row_normal.webp');
             background-size: contain; 
             background-repeat: no-repeat; 
             background-position: center;
             flex-shrink: 0; 
             
-            position: relative; /* 讓子元素參照此框 */
+            position: relative; 
             
-            /* 共用：粗體、無黑邊、有陰影 */
             font-weight: 900; 
             text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
         }
 
-        /* 1. 名次 */
+        /* 1. 名次 (Font 40px) */
         .rank-num {
             position: absolute;
-            left: 24px;
+            left: 20px;
             width: 82px;
             top: 50%; transform: translateY(-50%);
             text-align: left;
             color: rgb(255, 222, 0); 
-            font-size: 36px; /* 預設大小，JS 會自動調整 */
+            font-size: 40px; 
             font-style: normal;
             white-space: nowrap; 
         }
@@ -161,11 +191,10 @@
             overflow: hidden;
         }
 
-        /* 3. [獨立] 國籍 Flag */
-        /* [更新] left: 260px */
+        /* 3. 國籍 (Left 260px) */
         .rank-flag {
             position: absolute;
-            left: 260px; /* 更新為你的設定 */
+            left: 260px; 
             top: 50%; transform: translateY(-50%);
             
             font-size: 28px;
@@ -175,29 +204,30 @@
             z-index: 2; 
         }
 
-        /* 4. 積分 */
-        /* [更新] width: 190px */
+        /* 4. 積分 (Left 258px, Width 240px) */
         .rank-score {
             position: absolute;
             left: 258px;   
-            width: 190px;  /* 更新為你的設定 */
+            width: 240px;  
             
             top: 50%; transform: translateY(-50%);
             
-            /* 靠右對齊 (flex-end) */
             display: flex;
             justify-content: flex-end; 
             align-items: center;
             
             color: rgb(51, 206, 15);
-            font-size: 32px;
+            font-size: 40px; 
             font-family: monospace;
             font-style: italic;
         }
 
         /* C. 固定底部 (自己) */
         #rank-fixed-row {
-            position: absolute; left: 360px; top: 855px; width: 522px; height: 101px;
+            position: absolute; left: 360px; top: 855px; 
+            width: 522px; 
+            height: 101px; 
+            
             transform: translate(-50%, -50%); z-index: 205; 
             background-image: url('assets/ui_rank_row_self.webp');
             background-size: contain; background-repeat: no-repeat; background-position: center;
@@ -242,6 +272,8 @@
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-2">
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
     <img src="assets/icon_star.webp" class="ui-element" id="ui-icon-star">
+    
+    <div id="ui-game-score">00000000</div>
 
     <img src="assets/ui_text_combo_time.webp" class="ui-element" id="ui-text-combo-time">
     <img src="assets/ui_combo_bar_bg.webp" class="ui-element" id="ui-combo-bar-bg">
@@ -366,7 +398,7 @@
         console.log("Assets preloading started...");
     }
 
-    // [修改] 排行榜初始化 - 自動縮放排名
+    // 排行榜初始化
     function initLeaderboard() {
         const list = document.getElementById('rank-scroll-view');
         list.innerHTML = ''; 
@@ -384,10 +416,10 @@
             const scoreStr = scoreRaw.toString().padStart(8, '0');
             const flagEmoji = flags[i % flags.length];
 
-            // --- [新增] 排名縮放邏輯 ---
-            let rankFontSize = '36px'; // 預設
-            if (i >= 1000) rankFontSize = '30px'; // 4位數
-            if (i >= 10000) rankFontSize = '24px'; // 5位數
+            // 排名縮放邏輯 (以 40px 為基準)
+            let rankFontSize = '40px'; 
+            if (i >= 1000) rankFontSize = '32px'; 
+            if (i >= 10000) rankFontSize = '26px'; 
 
             row.innerHTML = `
                 <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
