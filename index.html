@@ -33,21 +33,18 @@
 
         /* 角色設定 */
         #ui-character-bear, #ui-character-devil { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; transition: filter 0.1s; }
-        
-        /* 惡魔熊預設隱藏 */
         #ui-character-devil { display: none; }
 
-        /* [修正] 角色動畫 - 受傷微幅抖動 (無閃光) */
+        /* 角色動畫 */
         @keyframes anim-shake {
             0% { transform: translate(-50%, -50%) rotate(0deg); }
-            25% { transform: translate(-51%, -50%) rotate(-1deg); } /* 左移 1% */
-            50% { transform: translate(-49%, -50%) rotate(1deg); }  /* 右移 1% */
+            25% { transform: translate(-51%, -50%) rotate(-1deg); } 
+            50% { transform: translate(-49%, -50%) rotate(1deg); }  
             75% { transform: translate(-50.5%, -50%) rotate(-0.5deg); }
             100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
-        .effect-shake { animation: anim-shake 0.15s ease-in-out; } /* 時間縮短一點點讓震動感更俐落 */
+        .effect-shake { animation: anim-shake 0.15s ease-in-out; }
 
-        /* 角色動畫 - 下沉消失 */
         @keyframes anim-sink {
             0% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(0); }
             20% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(1); }
@@ -55,7 +52,6 @@
         }
         .effect-sink { animation: anim-sink 1.0s ease-in forwards; }
 
-        /* 角色動畫 - 上升出現 */
         @keyframes anim-rise {
             0% { transform: translate(-50%, -20%); opacity: 0; }
             100% { transform: translate(-50%, -50%); opacity: 1; }
@@ -79,18 +75,18 @@
         #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 22; pointer-events: none; }
         
-        /* 遊戲中積分顯示 */
         #ui-game-score {
             position: absolute; left: 402px; width: 300px; top: 100px; transform: translateY(-50%);
             display: flex; justify-content: flex-end; align-items: center; z-index: 30; pointer-events: none; gap: 1px;
         }
-        /* 積分數字大小 20px */
         .score-digit-img { height: 20px; width: auto; object-fit: contain; }
 
         /* HIT 特效容器 */
         .hit-effect-wrapper {
             position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: center;
-            gap: 5px; pointer-events: none; z-index: 150; transform: translate(-50%, -50%);
+            gap: 5px; pointer-events: none; 
+            z-index: 999; /* 最上層 */
+            transform: translate(-50%, -50%);
             animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
         }
         .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -10px; }
@@ -113,7 +109,12 @@
         .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
         .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
 
-        .particle-star { position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 99; transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; }
+        /* 星星粒子特效 */
+        .particle-star { 
+            position: absolute; width: 44px; height: 44px; pointer-events: none; 
+            z-index: 999; /* 最上層 */
+            transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; 
+        }
 
         .hud-item { z-index: 15; transition: opacity 0.2s; }
         #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
@@ -140,13 +141,27 @@
         #character-home { width: 547px; height: 496px; left: 361px; top: 676px; z-index: 102; }
         #logo-main { width: 514px; height: 216px; left: 369px; top: 315px; z-index: 102; }
         
-        #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
-        #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
-        #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        #btn-coffee, #btn-share, #btn-start { z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; }
+        #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; }
+        #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; }
         
         .btn-pressed { transform: translate(-50%, -50%) scale(0.95) !important; filter: brightness(0.9); }
         #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
         #btn-start.pressed ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+
+        /* --- 輸入介面 --- */
+        #ui-input-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 180; display: none; }
+        #ui-panel-input { width: 540px; height: 240px; left: 360px; top: 600px; z-index: 181; }
+        #ui-input-field {
+            position: absolute; left: 362px; top: 640px; transform: translate(-50%, -50%);
+            width: 320px; height: 60px; z-index: 182;
+            background: transparent; border: none; outline: none;
+            color: #fff; font-size: 36px; font-weight: 900; text-align: center;
+            font-family: monospace; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+        }
+        #ui-input-field::placeholder { color: rgba(255,255,255,0.3); }
+        #btn-confirm-name { width: 522px; height: 101px; left: 360px; top: 800px; z-index: 182; cursor: pointer; }
 
         /* --- 6. 🏆 結算介面 --- */
         #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
@@ -155,8 +170,7 @@
         #logo-rank-title { width: 378px; height: 162px; left: 360px; top: 184px; z-index: 205; }
 
         #rank-content-layer {
-            position: absolute; left: 361px; top: 598px; 
-            width: 540px; height: 600px; 
+            position: absolute; left: 361px; top: 598px; width: 540px; height: 600px; 
             border-radius: 30px; overflow: hidden; transform: translate(-50%, -50%); z-index: 203;
         }
         #rank-scroll-view {
@@ -178,8 +192,6 @@
         .rank-name { position: absolute; left: 106px; width: 152px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 255, 255); font-size: 28px; white-space: nowrap; overflow: hidden; }
         .rank-flag { position: absolute; left: 260px; top: 50%; transform: translateY(-50%); font-size: 28px; font-style: normal; text-shadow: none; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); z-index: 2; }
         .rank-score { position: absolute; left: 258px; width: 240px; top: 50%; transform: translateY(-50%); display: flex; justify-content: flex-end; align-items: center; gap: -2px; }
-        
-        /* 排行榜積分數字大小 28px */
         .rank-score-digit { height: 28px; width: auto; object-fit: contain; }
 
         #rank-fixed-row {
@@ -265,25 +277,27 @@
         <img src="assets/ui_text_start.webp" class="ui-element" id="ui-text-start">
     </div>
 
+    <div id="ui-input-screen">
+        <div style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);"></div>
+        <img src="assets/ui_panel_input_name.webp" class="ui-element" id="ui-panel-input">
+        <input type="text" id="ui-input-field" placeholder="INPUT NAME" maxlength="8">
+        <img src="assets/btn_start.webp" class="ui-element" id="btn-confirm-name" onclick="submitName()">
+    </div>
+
     <div id="ui-result-screen">
         <div id="ui-mask-result" style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);" onclick="this.parentElement.style.display='none'"></div>
-        
         <img src="assets/logo_rank_title.webp" class="ui-element" id="logo-rank-title">
-
         <img src="assets/ui_panel_start.webp" class="ui-element" id="res-panel">
         <img src="assets/ui_panel_rank.webp" class="ui-element" id="res-panel-rank"> 
-        
         <div id="rank-content-layer">
             <div id="rank-scroll-view"></div>
         </div>
-
         <div id="rank-fixed-row">
             <span class="rank-num">6</span>
-            <span class="rank-name">YOU</span>
+            <span class="rank-name" id="my-rank-name">YOU</span>
             <span class="rank-flag">🇹🇼</span>
             <div class="rank-score" id="my-rank-score-container"></div>
         </div>
-        
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
         <img src="assets/btn_share.webp" class="ui-element" id="res-btn-share">
         <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="alert('Replay Logic Here')">
@@ -297,6 +311,7 @@
 <div id="debug-panel">
     <div class="debug-group">
         <label>畫面測試</label>
+        <button class="debug-btn" onclick="showInputScreen()" style="background:#2196f3; border-color:#64b5f6;">⌨ 測試輸入介面</button>
         <button class="debug-btn" onclick="showResultScreen()" style="background:#f57c00; border-color:#ffb74d;">💀 顯示結算介面</button>
         <button class="debug-btn" onclick="triggerBearDeath()" style="background:#d32f2f; border-color:#ef5350;">🐻 測試變身</button>
     </div>
@@ -324,10 +339,9 @@
     let timeLeft = 6000;
     let comboCount = 0;
     let currentScore = 0;
-    
-    // 輸入冷卻變數
+    let playerName = "YOU"; 
     let lastInputTime = 0;
-    const INPUT_COOLDOWN = 60; // 60ms 冷卻
+    const INPUT_COOLDOWN = 60; 
 
     const timerEls = {
         d1: document.getElementById('timer-d1'),
@@ -345,9 +359,17 @@
     window.addEventListener('load', () => {
         resizeGame();
         preloadGameAssets();
-        setupButtonFeedback();
+        // [修正] 綁定按鍵特效與換數字
+        document.querySelectorAll('.card-slot').forEach((slot, i) => {
+            setupButtonFeedback(slot, true); // 綁特效
+            slot.addEventListener('click', () => setGridNumber(i, Math.floor(Math.random() * 99999) + 1)); // 綁換數字
+        });
         updateScoreDisplay(0); 
         initLeaderboard(); 
+        
+        document.getElementById('ui-input-field').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') submitName();
+        });
     });
 
     function preloadGameAssets() {
@@ -357,10 +379,8 @@
             'num_grid_0.webp', 'num_grid_1.webp', 'num_grid_2.webp', 'num_grid_3.webp', 'num_grid_4.webp',
             'num_grid_5.webp', 'num_grid_6.webp', 'num_grid_7.webp', 'num_grid_8.webp', 'num_grid_9.webp',
             'ui_rank_row_normal.webp', 'ui_rank_row_self.webp', 'logo_rank_title.webp',
-            'icon_star.webp', 
-            'vfx_thunder.webp',
-            'ui_text_hit.webp',
-            'character_bear_devil.webp' 
+            'icon_star.webp', 'vfx_thunder.webp', 'ui_text_hit.webp', 'character_bear_devil.webp',
+            'ui_panel_input_name.webp'
         ];
         assets.forEach(name => {
             const img = new Image();
@@ -441,23 +461,18 @@
         const list = document.getElementById('rank-scroll-view');
         if(!list) return;
         list.innerHTML = ''; 
-        
         const flags = ['🇹🇼', '🇯🇵', '🇺🇸', '🇰🇷', '🇨🇦', '🇬🇧', '🇦🇺', '🇫🇷', '🇩🇪', '🇹🇭'];
-
         for(let i=1; i<=100; i++) {
             const row = document.createElement('div');
             row.className = 'rank-row';
-            
             const rankStr = i;
             let nameRaw = `Player${i}`;
             const nameStr = nameRaw.substring(0, 8); 
             let scoreRaw = 99999 - i * 100;
             const flagEmoji = flags[i % flags.length];
-
             let rankFontSize = '40px'; 
             if (i >= 1000) rankFontSize = '32px'; 
             if (i >= 10000) rankFontSize = '26px'; 
-
             row.innerHTML = `
                 <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
                 <span class="rank-name">${nameStr}</span>
@@ -466,7 +481,6 @@
             `;
             list.appendChild(row);
         }
-
         const myScoreContainer = document.getElementById('my-rank-score-container');
         if(myScoreContainer) {
             myScoreContainer.innerHTML = getScoreHtml(12345);
@@ -476,13 +490,10 @@
     function handleBearHit() {
         const bearNormal = document.getElementById('ui-character-bear');
         const bearDevil = document.getElementById('ui-character-devil');
-        
         const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
-        
         activeBear.classList.remove('effect-shake');
         void activeBear.offsetWidth; 
         activeBear.classList.add('effect-shake');
-        
         setTimeout(() => {
             activeBear.classList.remove('effect-shake');
         }, 200);
@@ -491,9 +502,7 @@
     function triggerBearDeath() {
         const bearNormal = document.getElementById('ui-character-bear');
         const bearDevil = document.getElementById('ui-character-devil');
-
         bearNormal.classList.add('effect-sink');
-
         setTimeout(() => {
             bearNormal.style.display = 'none'; 
             bearDevil.style.display = 'block'; 
@@ -508,10 +517,8 @@
             const now = Date.now();
             if (now - lastInputTime < INPUT_COOLDOWN) return; 
             lastInputTime = now;
-
             element.classList.add(pressClass);
             element.setPointerCapture(e.pointerId);
-
             if (isCard) {
                 const cx = parseInt(element.style.left);
                 const cy = parseInt(element.style.top);
@@ -520,7 +527,6 @@
                 createHitEffect(cx, cy, comboCount);
                 currentScore += 100;
                 updateScoreDisplay(currentScore);
-                
                 handleBearHit();
             }
         });
@@ -529,17 +535,42 @@
         element.addEventListener('pointerleave', release);
         element.addEventListener('pointercancel', release);
     }
-
-    document.querySelectorAll('.card-slot').forEach(slot => { setupButtonFeedback(slot, true); });
+    
+    // Bind buttons
     setupButtonFeedback(document.getElementById('btn-start'));
     setupButtonFeedback(document.getElementById('btn-coffee'));
     setupButtonFeedback(document.getElementById('btn-share'));
     setupButtonFeedback(document.getElementById('res-btn-retry'));
     setupButtonFeedback(document.getElementById('res-btn-coffee'));
     setupButtonFeedback(document.getElementById('res-btn-share'));
+    setupButtonFeedback(document.getElementById('btn-confirm-name'));
+
+    function showInputScreen() {
+        document.getElementById('ui-home-screen').style.display = 'none';
+        document.getElementById('ui-result-screen').style.display = 'none';
+        document.getElementById('ui-input-screen').style.display = 'block';
+        document.getElementById('ui-input-field').focus();
+    }
+
+    function submitName() {
+        const inputVal = document.getElementById('ui-input-field').value.trim();
+        if (inputVal) {
+            playerName = inputVal.substring(0, 8); 
+        }
+        document.getElementById('ui-input-screen').style.display = 'none';
+        showResultScreen();
+    }
 
     function showResultScreen() {
         document.getElementById('ui-result-screen').style.display = 'block';
+        
+        const nameEl = document.getElementById('my-rank-name');
+        if(nameEl) nameEl.textContent = playerName;
+
+        const myScoreContainer = document.getElementById('my-rank-score-container');
+        if(myScoreContainer) {
+            myScoreContainer.innerHTML = getScoreHtml(currentScore);
+        }
     }
 
     function updateTimerDisplay(totalUnits) {
@@ -547,15 +578,10 @@
         const millis = totalUnits % 100;
         const sStr = seconds.toString().padStart(2, '0');
         const mStr = millis.toString().padStart(2, '0');
-
-        if (timerEls.d1.src.indexOf(`num_ui_${sStr[0]}.webp`) === -1) 
-            timerEls.d1.src = `assets/num_ui_${sStr[0]}.webp`;
-        if (timerEls.d2.src.indexOf(`num_ui_${sStr[1]}.webp`) === -1) 
-            timerEls.d2.src = `assets/num_ui_${sStr[1]}.webp`;
-        if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) 
-            timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
-        if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) 
-            timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
+        if (timerEls.d1.src.indexOf(`num_ui_${sStr[0]}.webp`) === -1) timerEls.d1.src = `assets/num_ui_${sStr[0]}.webp`;
+        if (timerEls.d2.src.indexOf(`num_ui_${sStr[1]}.webp`) === -1) timerEls.d2.src = `assets/num_ui_${sStr[1]}.webp`;
+        if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
+        if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
     }
 
     function startGameTimer() {
@@ -571,7 +597,7 @@
                 timeLeft = 0;
                 stopGameTimer();
                 alert("Time Up!");
-                showResultScreen(); 
+                showInputScreen();
             }
             updateTimerDisplay(timeLeft);
         }, 10);
@@ -584,6 +610,7 @@
     function startGameProcess() {
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none'; 
+        document.getElementById('ui-input-screen').style.display = 'none';
         
         const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
         let delay = 0;
@@ -628,21 +655,20 @@
         wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
     }
 
-    document.querySelectorAll('.card-slot').forEach((slot, i) => {
-        slot.addEventListener('click', () => setGridNumber(i, Math.floor(Math.random() * 99999) + 1));
-    });
-
+    // [恢復] 數字縮放測試函式
     function testDigits(d) {
         const val = Math.pow(10, d) - 1;
         document.querySelectorAll('.card-slot').forEach((_, i) => setGridNumber(i, val));
     }
 
+    // [恢復] HP 測試函式
     function testHP(hp) {
         for (let i = 1; i <= 3; i++) {
             document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
         }
     }
 
+    // [恢復] Bar 測試函式
     function testBar(val) {
         document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
     }
