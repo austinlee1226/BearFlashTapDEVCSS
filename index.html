@@ -80,7 +80,7 @@
             position: absolute; left: 402px; width: 300px; top: 100px; transform: translateY(-50%);
             display: flex; justify-content: flex-end; align-items: center; z-index: 30; pointer-events: none; gap: 1px;
         }
-        .score-digit-img { height: 20px; width: auto; object-fit: contain; }
+        .score-digit-img { height: 22px; width: auto; object-fit: contain; }
 
         /* HIT 特效容器 */
         .hit-effect-wrapper {
@@ -875,7 +875,10 @@
     function updateScoreDisplay(newScore) {
         const scoreContainer = document.getElementById('ui-game-score');
         scoreContainer.innerHTML = ''; 
-        const scoreStr = newScore.toString().padStart(8, '0');
+        
+        // --- 修正：刪除 .padStart(8, '0')，讓它只顯示實際位數 ---
+        const scoreStr = newScore.toString(); 
+        
         for (let char of scoreStr) {
             const img = document.createElement('img');
             img.src = `assets/num_grid_${char}.webp`;
@@ -885,7 +888,8 @@
     }
 
     function getScoreHtml(score) {
-        const str = score.toString().padStart(8, '0');
+        // --- 修正：同樣刪除 .padStart(8, '0') ---
+        const str = score.toString(); 
         let html = '';
         for(let char of str) {
             html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
