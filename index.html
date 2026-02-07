@@ -297,6 +297,8 @@
         <img id="timer-d4" class="timer-digit" src="assets/num_ui_0.webp">
     </div>
 
+    <audio id="bgm-main" src="assets/bgm_main.mp3" loop preload="auto"></audio>
+
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-1">
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-2">
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
@@ -398,6 +400,24 @@
 </div>
 
 <script>
+    // --- 第一步驟：在此處貼上全域音效工具 ---
+    let audioCtx = null; // 音效環境變數
+
+    // 核心音效函式 f:頻率(Hz), t:波形類型, d:持續時間(秒)
+  function playSnd(f, t, d) {
+    // 如果音效環境不存在或未啟動，就直接跳出，避免程式報錯
+       if (!audioCtx || audioCtx.state !== 'running') return;
+    
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = t; 
+        o.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d); // 自動淡出
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + d);
+    }
+    // ------------------------------------
     let gameTimer = null;
     let timeLeft = 1000;
     let comboCount = 0;
@@ -487,6 +507,22 @@
     }
 
     function startGameProcess() {
+    // --- 修正後的音效環境初始化 ---
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // iOS 關鍵：如果音效環境被掛起，必須手動恢復
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    // ----------------------------
+
+    // 播放背景音樂 (使用更穩定的 Promise 寫法)
+    const bgm = document.getElementById('bgm-main');
+    if (bgm) {
+        bgm.volume = 0.5;
+        bgm.play().catch(e => console.log("手機音樂撥放受限:", e));
+    }
         resetGameUI();
         state = {
             isPlaying: false,
@@ -571,6 +607,9 @@
         const clickedNum = state.numbersOnGrid[index];
         const slot = document.querySelectorAll('.card-slot')[index];
 
+        // --- 貼在這裡：如果卡片已經消失(透明度為0)，就直接跳出不執行後面的邏輯 ---
+        if (slot.style.opacity === '0') return;
+        // ------------------------------------------------------------------
         if (clickedNum === state.currentTarget) {
             const cx = parseInt(slot.style.left);
             const cy = parseInt(slot.style.top);
@@ -581,7 +620,10 @@
             currentScore += 100 + (comboCount * 10);
             updateScoreDisplay(currentScore);
             timeLeft += 50;
-            
+        // --- 點對：頻率隨 Combo 增加 ---
+            const freq = 800 + (Math.min(comboCount, 200) * 5);
+            playSnd(freq, 'sine', 0.1);
+
             slot.style.opacity = '0'; // 隱藏按過的
             
             state.currentTarget++;
@@ -595,6 +637,8 @@
         state.hearts--;
         timeLeft -= 100;
         if (timeLeft < 0) timeLeft = 0;
+        // --- 點錯：低沈刺耳警示音 ---
+        playSnd(150, 'sawtooth', 0.2);
         testHP(state.hearts);
         comboCount = 0;
         handleBearHit(); 
@@ -616,6 +660,12 @@
     }
 
     function gameOver(reason) {
+       // 停止背景音樂並重設進度
+    const bgm = document.getElementById('bgm-main');
+        if (bgm) {
+        bgm.pause();
+        bgm.currentTime = 0; 
+    }
         state.isPlaying = false;
         stopGameTimer();
         triggerBearDeath();
