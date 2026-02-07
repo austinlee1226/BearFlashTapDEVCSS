@@ -588,22 +588,23 @@
     }
 
     function startGameProcess() {
-    // --- 修正後的音效環境初始化 ---
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    // iOS 關鍵：如果音效環境被掛起，必須手動恢復
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    // ----------------------------
+        // --- 修正後的音效環境初始化 ---
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        // iOS 關鍵：如果音效環境被掛起，必須手動恢復
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        // ----------------------------
 
-    // 播放背景音樂 (使用更穩定的 Promise 寫法)
-    const bgm = document.getElementById('bgm-main');
-    if (bgm) {
-        bgm.volume = 0.5;
-        bgm.play().catch(e => console.log("手機音樂撥放受限:", e));
-    }
+        // 播放背景音樂
+        const bgm = document.getElementById('bgm-main');
+        if (bgm) {
+            bgm.volume = 0.5;
+            bgm.play().catch(e => console.log("手機音樂撥放受限:", e));
+        }
+
         resetGameUI();
         state = {
             isPlaying: false,
@@ -623,20 +624,28 @@
             el.style.display = 'none';
             el.classList.remove('anim-pop');
         });
+
         ids.forEach((id, index) => {
             setTimeout(() => {
                 if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
                 const el = document.getElementById(id);
                 el.style.display = 'block';
                 el.classList.add('anim-pop');
+
+                // 🌟 加入倒數音效邏輯
                 if (id === 'ui-text-go') {
+                    // GO! 出現時播放高音噹！
+                    playSnd(880, 'sine', 0.3); 
                     setTimeout(() => { 
                         el.style.display = 'none'; 
                         startGameLoop(); 
                     }, 500);
+                } else {
+                    // 3, 2, 1 出現時播放短促嗶聲
+                    playSnd(440, 'sine', 0.1);
                 }
             }, delay);
-            delay += 800;
+            delay += 800; // 每 0.8 秒切換一次數字
         });
     }
 
@@ -687,78 +696,82 @@
     }
 
  function handleCardTap(index) {
-        if (!state.isPlaying || state.isPaused) return;
+    if (!state.isPlaying || state.isPaused) return;
 
-        const clickedNum = state.numbersOnGrid[index];
-        const slot = document.querySelectorAll('.card-slot')[index];
+    const clickedNum = state.numbersOnGrid[index];
+    const slot = document.querySelectorAll('.card-slot')[index];
 
-        // 防止重複點擊已經隱藏的卡片
-        if (slot.style.opacity === '0') return;
+    // 防止重複點擊已經隱藏的卡片
+    if (slot.style.opacity === '0') return;
 
-        if (clickedNum === state.currentTarget) {
-            const now = Date.now();
-            const windowTime = getComboWindow(comboCount);
+    if (clickedNum === state.currentTarget) {
+        const now = Date.now();
+        const windowTime = getComboWindow(comboCount);
 
-            // --- 1. 連擊判定邏輯 ---
-            if (comboCount > 0 && (now - lastHitTime) > windowTime) {
-                comboCount = 1; // 點對但超時，重置連擊
-            } else {
-                comboCount++;   // 點對且準時，連擊增加
-            }
-            lastHitTime = now;
-
-            // --- 2. 全動態分數計算 ---
-            const scoreThisHit = calculateStepScore(comboCount);
-            currentScore += scoreThisHit;
-            updateScoreDisplay(currentScore);
-
-            // --- 3. 視覺與音效回饋 ---
-            const cx = parseInt(slot.style.left);
-            const cy = parseInt(slot.style.top);
-            createStarBurst(cx, cy);
-            createHitEffect(cx, cy, comboCount);
-            
-            const freq = 800 + (Math.min(comboCount, 200) * 5);
-            playSnd(freq, 'sine', 0.1);
-
-            timeLeft += 50; // 時間獎勵 +0.5s
-            slot.style.opacity = '0';
-            state.currentTarget++;
-
-            // --- 4. 啟動連擊條倒退動畫 ---
-            cancelAnimationFrame(comboTimerReq);
-            updateComboBar();
-
-            // --- 5. 判定過關與回血邏輯 ---
-            if (state.currentTarget > state.maxTargetInWave) {
-                if (state.round % 5 === 0 && state.hearts < 3) {
-                    state.hearts++;
-                    testHP(state.hearts);
-                    playSnd(1200, 'sine', 0.3);
-                    createHealEffect();
-                }
-                state.round++;
-                setTimeout(spawnWave, 200);
-            }
+        // --- 1. 連擊判定邏輯 ---
+        if (comboCount > 0 && (now - lastHitTime) > windowTime) {
+            comboCount = 1; // 點對但超時，重置連擊
         } else {
-            // --- 6. 點錯懲罰邏輯 ---
-            state.hearts--;
-            timeLeft -= 100; // 時間懲罰 -1.0s
-            comboCount = 0;
-            lastHitTime = 0;
-            
-            playSnd(150, 'sawtooth', 0.2);
-            testHP(state.hearts);
-            handleBearHit();
+            comboCount++;   // 點對且準時，連擊增加
+        }
+        lastHitTime = now;
 
-            slot.classList.add('wrong-flash-card');
-            setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
+        // --- 2. 全動態分數計算 ---
+        const scoreThisHit = calculateStepScore(comboCount);
+        currentScore += scoreThisHit;
+        updateScoreDisplay(currentScore);
 
-            if (state.hearts <= 0) {
-                gameOver('hearts');
+        // --- 3. 視覺與音效回饋 ---
+        const cx = parseInt(slot.style.left);
+        const cy = parseInt(slot.style.top);
+        createStarBurst(cx, cy);
+        createHitEffect(cx, cy, comboCount);
+        
+        // 🌟【新增】點擊正確時，熊熊抖動反饋
+        handleBearHit(); 
+
+        const freq = 800 + (Math.min(comboCount, 200) * 5);
+        playSnd(freq, 'sine', 0.1);
+
+        timeLeft += 30; // 時間獎勵 +0.3s
+        slot.style.opacity = '0';
+        state.currentTarget++;
+
+        // --- 4. 啟動連擊條倒退動畫 ---
+        cancelAnimationFrame(comboTimerReq);
+        updateComboBar();
+
+        // --- 5. 判定過關與回血邏輯 ---
+        if (state.currentTarget > state.maxTargetInWave) {
+            if (state.round % 5 === 0 && state.hearts < 3) {
+                state.hearts++;
+                testHP(state.hearts);
+                playSnd(1200, 'sine', 0.3);
+                createHealEffect();
             }
+            state.round++;
+            setTimeout(spawnWave, 200);
+        }
+    } else {
+        // --- 6. 點錯懲罰邏輯 ---
+        state.hearts--;
+        timeLeft -= 100; // 時間懲罰 -1.0s
+        comboCount = 0;
+        lastHitTime = 0;
+        
+        playSnd(150, 'sawtooth', 0.2);
+        testHP(state.hearts);
+        
+        // ❌【移除】這裡原本的 handleBearHit() 已經刪除了
+
+        slot.classList.add('wrong-flash-card');
+        setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
+
+        if (state.hearts <= 0) {
+            gameOver('hearts');
         }
     }
+}
 
     function gameOver(reason) {
        // 停止背景音樂並重設進度
