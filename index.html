@@ -944,7 +944,7 @@
         } catch (e) { console.error("Firebase 上傳失敗:", e); }
     };
 
-    // 2. 提交名字 (防止撞名檢查)
+    // 2. 提交名字 (防止撞名檢查 + 修正上傳順序)
     window.submitName = async function() {
         const inputField = document.getElementById('ui-input-field');
         const inputVal = inputField.value.trim();
@@ -975,9 +975,20 @@
             document.getElementById('ui-input-screen').style.display = 'none';
             if(btn) { btn.style.opacity = "1"; btn.style.pointerEvents = "auto"; }
 
+            // 🌟 核心修改區：順序調換 + 等待機制 🌟
+            
+            // 1. 先顯示結算框 (讓玩家知道有在動)
             if (window.showResultScreen) window.showResultScreen();
-            if (window.initLeaderboard) window.initLeaderboard();
-            if (window.uploadScore) window.uploadScore(playerName, currentScore);
+
+            // 2. 【關鍵】先上傳分數，並且「等待 (await)」它完成！
+            if (window.uploadScore) {
+                await window.uploadScore(playerName, currentScore);
+            }
+
+            // 3. 確定上傳完成後，才去抓排行榜，這樣一定抓得到最新資料
+            if (window.initLeaderboard) {
+                await window.initLeaderboard();
+            }
 
         } catch (e) {
             console.error("檢查名字失敗:", e);
