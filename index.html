@@ -399,7 +399,7 @@
     <button class="debug-btn" style="width:100%; background:#c62828;" onclick="this.parentElement.style.display='none'">隱藏面板</button>
 </div>
 
-<script>
+<script type="module">
     // --- 第一步驟：在此處貼上全域音效工具 ---
     let audioCtx = null; // 音效環境變數
 
@@ -587,7 +587,7 @@
         });
     }
 
-    function startGameProcess() {
+    window.startGameProcess = function() {
         // --- 修正後的音效環境初始化 ---
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -733,7 +733,7 @@
         const freq = 800 + (Math.min(comboCount, 200) * 5);
         playSnd(freq, 'sine', 0.1);
 
-        timeLeft += 30; // 時間獎勵 +0.3s
+        timeLeft += 50; // 時間獎勵 +0.5s
         slot.style.opacity = '0';
         state.currentTarget++;
 
@@ -774,16 +774,26 @@
 }
 
     function gameOver(reason) {
-       // 停止背景音樂並重設進度
-    const bgm = document.getElementById('bgm-main');
+        // 1. 停止背景音樂並重設進度
+        const bgm = document.getElementById('bgm-main');
         if (bgm) {
-        bgm.pause();
-        bgm.currentTime = 0; 
-    }
+            bgm.pause();
+            bgm.currentTime = 0; 
+        }
+
+        // 2. 停止遊戲邏輯與計時器
         state.isPlaying = false;
         stopGameTimer();
         triggerBearDeath();
+
+        // 🌟 3. [新增] 觸發 Firebase 雲端上傳
+        // 使用你目前的 playerName (預設為 YOU 或輸入的名字) 與 currentScore
+        if (window.uploadScore) {
+            console.log(`🎮 遊戲結束(${reason})，正在準備上傳成績...`);
+            window.uploadScore(playerName, currentScore);
+        }
         
+        // 4. 顯示結束文字動畫 (維持原本邏輯)
         setTimeout(() => {
             if (reason === 'time') {
                 document.getElementById('ui-text-timeup').classList.add('anim-pop-end');
@@ -792,6 +802,7 @@
             }
         }, 800);
 
+        // 5. 進入輸入暱稱或結算畫面 (維持原本邏輯)
         setTimeout(() => {
             showInputScreen();
         }, 2800); 
@@ -910,33 +921,57 @@
         return html;
     }
 
-    function initLeaderboard() {
+    // 🌟 修正版：從雲端抓取真實排行榜 (替換原本的假資料迴圈)
+    async function initLeaderboard() {
         const list = document.getElementById('rank-scroll-view');
         if(!list) return;
-        list.innerHTML = ''; 
-        const flags = ['🇹🇼', '🇯🇵', '🇺🇸', '🇰🇷', '🇨🇦', '🇬🇧', '🇦🇺', '🇫🇷', '🇩🇪', '🇹🇭'];
-        for(let i=1; i<=100; i++) {
-            const row = document.createElement('div');
-            row.className = 'rank-row';
-            const rankStr = i;
-            let nameRaw = `Player${i}`;
-            const nameStr = nameRaw.substring(0, 8); 
-            let scoreRaw = 99999 - i * 100;
-            const flagEmoji = flags[i % flags.length];
-            let rankFontSize = '40px'; 
-            if (i >= 1000) rankFontSize = '32px'; 
-            if (i >= 10000) rankFontSize = '26px'; 
-            row.innerHTML = `
-                <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
-                <span class="rank-name">${nameStr}</span>
-                <span class="rank-flag">${flagEmoji}</span>
-                <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
-            `;
-            list.appendChild(row);
-        }
-        const myScoreContainer = document.getElementById('my-rank-score-container');
-        if(myScoreContainer) {
-            myScoreContainer.innerHTML = getScoreHtml(12345);
+
+        // 1. 先顯示 LOADING 提示，讓玩家知道正在連線雲端
+        list.innerHTML = '<div style="color:white; text-align:center; padding-top:50px; font-size:24px; font-family:sans-serif;">LOADING RANK...</div>';
+
+        try {
+            // 2. 呼叫我們定義好的 Firebase 讀取功能 (抓取前 10 名)
+            const realData = await window.getLeaderboard();
+            
+            // 3. 清空容器，準備放入真資料
+            list.innerHTML = ''; 
+
+            if (!realData || realData.length === 0) {
+                list.innerHTML = '<div style="color:gray; text-align:center; padding-top:50px; font-family:sans-serif;">目前尚無排名紀錄</div>';
+                return;
+            }
+
+            // 4. 遍歷從 Firebase 抓回來的真實數據
+            realData.forEach((data, index) => {
+                const row = document.createElement('div');
+                row.className = 'rank-row';
+                
+                const rankNum = index + 1;
+                const nameStr = (data.name || "Unknown").substring(0, 8);
+                const scoreRaw = data.score || 0;
+                
+                row.innerHTML = `
+                    <span class="rank-num">${rankNum}</span>
+                    <span class="rank-name">${nameStr}</span>
+                    <span class="rank-flag">🇹🇼</span>
+                    <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
+                `;
+                list.appendChild(row);
+            });
+
+            // 5. 更新最下方「固定顯示自己分數」的區塊
+            const myScoreContainer = document.getElementById('my-rank-score-container');
+            if(myScoreContainer) {
+                myScoreContainer.innerHTML = getScoreHtml(currentScore);
+            }
+            
+            // 同步更新自己的暱稱顯示
+            const myNameEl = document.getElementById('my-rank-name');
+            if(myNameEl) myNameEl.textContent = playerName;
+
+        } catch (error) {
+            console.error("排行榜初始化失敗:", error);
+            list.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;">連線失敗</div>';
         }
     }
 
@@ -1026,8 +1061,8 @@
         document.getElementById('ui-input-field').focus();
     }
 
-    function submitName() {
-        const inputVal = document.getElementById('ui-input-field').value.trim();
+    window.submitName = function() {
+    const inputVal = document.getElementById('ui-input-field').value.trim();
         if (inputVal) {
             playerName = inputVal.substring(0, 8); 
         }
@@ -1088,6 +1123,74 @@
     fillBar.addEventListener('click', () => { fillBar.style.transform = `translate(-50%, -50%) scaleX(${Math.random()})`; });
 
     updateTimerDisplay(1000);
+
+    // --- Firebase 雲端整合模組 (CDN 版本) ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, setDoc, doc, serverTimestamp } 
+    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAj4XgNOpRKzBlX1cANoDVtHd89HP0Q5HQ",
+  authDomain: "pixel-jd-games-hub.firebaseapp.com",
+  projectId: "pixel-jd-games-hub",
+  storageBucket: "pixel-jd-games-hub.firebasestorage.app",
+  messagingSenderId: "672178239988",
+  appId: "1:672178239988:web:6a49431cdc1bb9f066e1a1",
+  measurementId: "G-FLYGZGG3ZS"
+};
+
+// 初始化 Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const GAME_ID = "bear_flash_tap"; // 🌟 方案 B：這是這款遊戲在資料庫的身份夾名稱
+
+// 🌟 全域功能：上傳成績 (自動判斷最高分)
+window.uploadScore = async function(playerName, score) {
+    if (!playerName) playerName = "匿名玩家";
+    console.log(`正在為 ${playerName} 上傳分數: ${score}`);
+    
+    try {
+        const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
+        const q = query(leaderRef, where("name", "==", playerName));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const existingDoc = querySnapshot.docs[0];
+            if (score > existingDoc.data().score) {
+                await setDoc(doc(db, `leaderboard_${GAME_ID}`, existingDoc.id), {
+                    score: score,
+                    timestamp: serverTimestamp()
+                }, { merge: true });
+                console.log("🏆 破紀錄！更新分數成功");
+            } else {
+                console.log("分數未超過個人紀錄，不更新");
+            }
+        } else {
+            await addDoc(leaderRef, {
+                name: playerName,
+                score: score,
+                timestamp: serverTimestamp()
+            });
+            console.log("✅ 首次成績上傳成功");
+        }
+    } catch (e) {
+        console.error("Firebase 上傳失敗:", e);
+    }
+};
+
+// 🌟 全域功能：讀取排行榜
+window.getLeaderboard = async function() {
+    try {
+        const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
+        const q = query(leaderRef, orderBy("score", "desc"), limit(10));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => doc.data());
+    } catch (e) {
+        console.error("讀取排行榜失敗:", e);
+        return [];
+    }
+};
+
 </script>
 </body>
 </html>
