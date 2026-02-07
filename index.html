@@ -425,6 +425,80 @@
     let playerName = "YOU"; 
     let lastInputTime = 0;
     const INPUT_COOLDOWN = 60; 
+// --- 新增：連擊與分數核心變數 ---
+    let lastHitTime = 0;      // 紀錄上一次正確點擊的絕對時間
+    let comboTimerReq = null; // 用於控制連擊條動畫
+
+    // 核心：連擊級距得分計算 (依照你提供的級距表)
+    function calculateStepScore(combo) {
+    const baseScore = 10; // 基礎分維持 10
+    let bonus = 0;
+    let multiplier = 1;
+
+    if (combo === 0) {
+        bonus = 0;
+    } else if (combo <= 100) {
+        // 原本是 1 + ... 改成 10 + ...
+        bonus = 10 + Math.floor(combo / 10) * 10; 
+    } else if (combo <= 300) {
+        // 原本基數 22 改成 220，後方加成也 * 10
+        bonus = 220 + Math.floor((combo - 100) / 50) * 20;
+    } else if (combo <= 600) {
+        // 原本基數 35 改成 350
+        bonus = 350 + Math.floor((combo - 300) / 100) * 50;
+    } else if (combo <= 1000) {
+        bonus = 600 + Math.floor((combo - 600) / 200) * 100;
+    } else if (combo <= 2000) {
+        bonus = 1000 + Math.floor((combo - 1000) / 250) * 200;
+    } else if (combo <= 3000) {
+        bonus = 2300 + Math.floor((combo - 2000) / 500) * 500;
+    } else if (combo <= 4000) {
+        bonus = 4300 + Math.floor((combo - 3000) / 500) * 1000;
+    } else if (combo <= 5000) {
+        bonus = 8300 + Math.floor((combo - 4000) / 500) * 2000;
+    } else {
+        // 5000+ 極限模式：原本 2060 改成 20600
+        bonus = 20600; 
+        multiplier = 2; 
+    }
+    
+    // 最終計算：(10 + 20600) * 2 = 41220 分！
+    return (baseScore + bonus) * multiplier;
+}
+
+    // 核心：取得當前 Combo 對應的窗口時間 (ms)
+    function getComboWindow(combo) {
+        if (combo <= 100) return 1000;
+        if (combo <= 300) return 800;
+        if (combo <= 600) return 500;
+        return 300; // 601+ 以上只有 0.3 秒
+    }
+
+// --- 貼在這裡：實時倒退連擊條邏輯 ---
+    function updateComboBar() {
+        if (!state.isPlaying || comboCount === 0) {
+            document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(0)`;
+            return;
+        }
+
+        const now = Date.now();
+        const windowTime = getComboWindow(comboCount);
+        const elapsed = now - lastHitTime;
+        let remainRatio = (windowTime - elapsed) / windowTime;
+
+        if (remainRatio <= 0) {
+            remainRatio = 0;
+            // 這裡讓條子停在 0，實質的 combo 重置交給 handleCardTap 判定
+        }
+
+        // 效能優化：使用 transform 代替 width
+        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${remainRatio})`;
+
+        if (state.isPlaying && remainRatio > 0) {
+            comboTimerReq = requestAnimationFrame(updateComboBar);
+        }
+    }
+    // ---------------------------------
 
     // 遊戲狀態
     let state = {
@@ -574,6 +648,10 @@
         updateTimerDisplay(timeLeft);
         spawnWave();
         
+        // --- 修正點：初始化第一次點擊的參考時間 ---
+        lastHitTime = Date.now(); 
+        // -----------------------------------
+
         if (gameTimer) clearInterval(gameTimer);
         gameTimer = setInterval(() => {
             if (!state.isPlaying || state.isPaused) return;
@@ -608,71 +686,78 @@
         });
     }
 
-    function handleCardTap(index) {
-        if(!state.isPlaying || state.isPaused) return;
-        
+ function handleCardTap(index) {
+        if (!state.isPlaying || state.isPaused) return;
+
         const clickedNum = state.numbersOnGrid[index];
         const slot = document.querySelectorAll('.card-slot')[index];
 
-        // --- 貼在這裡：如果卡片已經消失(透明度為0)，就直接跳出不執行後面的邏輯 ---
+        // 防止重複點擊已經隱藏的卡片
         if (slot.style.opacity === '0') return;
-        // ------------------------------------------------------------------
+
         if (clickedNum === state.currentTarget) {
+            const now = Date.now();
+            const windowTime = getComboWindow(comboCount);
+
+            // --- 1. 連擊判定邏輯 ---
+            if (comboCount > 0 && (now - lastHitTime) > windowTime) {
+                comboCount = 1; // 點對但超時，重置連擊
+            } else {
+                comboCount++;   // 點對且準時，連擊增加
+            }
+            lastHitTime = now;
+
+            // --- 2. 全動態分數計算 ---
+            const scoreThisHit = calculateStepScore(comboCount);
+            currentScore += scoreThisHit;
+            updateScoreDisplay(currentScore);
+
+            // --- 3. 視覺與音效回饋 ---
             const cx = parseInt(slot.style.left);
             const cy = parseInt(slot.style.top);
             createStarBurst(cx, cy);
-            comboCount++; 
             createHitEffect(cx, cy, comboCount);
             
-            currentScore += 100 + (comboCount * 10);
-            updateScoreDisplay(currentScore);
-            timeLeft += 50;
-        // --- 點對：頻率隨 Combo 增加 ---
             const freq = 800 + (Math.min(comboCount, 200) * 5);
             playSnd(freq, 'sine', 0.1);
 
-            slot.style.opacity = '0'; // 隱藏按過的
-            
+            timeLeft += 50; // 時間獎勵 +0.5s
+            slot.style.opacity = '0';
             state.currentTarget++;
 
-            // --- 貼在這裡：判定這一輪是否點完，並執行回血與進入下一輪 ---
+            // --- 4. 啟動連擊條倒退動畫 ---
+            cancelAnimationFrame(comboTimerReq);
+            updateComboBar();
+
+            // --- 5. 判定過關與回血邏輯 ---
             if (state.currentTarget > state.maxTargetInWave) {
-                // 每 5 輪 (5, 10, 15...) 且沒滿血時回血
                 if (state.round % 5 === 0 && state.hearts < 3) {
-                    state.hearts++;           // 生命值 +1
-                    testHP(state.hearts);     // 更新愛心 UI
-                    playSnd(1200, 'sine', 0.3); // 播放回血音效
-                    createHealEffect();       // 播放愛心噴發特效
+                    state.hearts++;
+                    testHP(state.hearts);
+                    playSnd(1200, 'sine', 0.3);
+                    createHealEffect();
                 }
-                
                 state.round++;
                 setTimeout(spawnWave, 200);
             }
         } else {
-        // --- 這裡是你原本的扣血邏輯 ---
-        state.hearts--;
-        timeLeft -= 100;
-        if (timeLeft < 0) timeLeft = 0;
-        // --- 點錯：低沈刺耳警示音 ---
-        playSnd(150, 'sawtooth', 0.2);
-        testHP(state.hearts);
-        comboCount = 0;
-        handleBearHit(); 
-        if(state.hearts <= 0) {
-            gameOver('hearts');
+            // --- 6. 點錯懲罰邏輯 ---
+            state.hearts--;
+            timeLeft -= 100; // 時間懲罰 -1.0s
+            comboCount = 0;
+            lastHitTime = 0;
+            
+            playSnd(150, 'sawtooth', 0.2);
+            testHP(state.hearts);
+            handleBearHit();
+
+            slot.classList.add('wrong-flash-card');
+            setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
+
+            if (state.hearts <= 0) {
+                gameOver('hearts');
+            }
         }
-
-        // --- 【新增】錯誤視覺反饋 (貼在這裡) ---
-        const slot = document.querySelectorAll('.card-slot')[index];
-        
-        // 1. 加上 class (變紅 + 震動)
-        slot.classList.add('wrong-flash-card');
-
-        // 2. 設定計時器，0.2秒後移除 class (復原)
-        setTimeout(() => {
-            slot.classList.remove('wrong-flash-card');
-        }, 200);
-    }
     }
 
     function gameOver(reason) {
