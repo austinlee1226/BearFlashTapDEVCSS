@@ -365,7 +365,7 @@
         </div>
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
         <img src="assets/btn_share.webp" class="ui-element" id="res-btn-share">
-        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="alert('Replay Logic Here')">
+        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="startGameProcess()">
         <img src="assets/ui_text_retry.webp" class="ui-element" id="ui-text-retry">
     </div>
 
@@ -489,21 +489,28 @@
         devil.style.display = 'none';
         devil.classList.remove('effect-rise');
         
-        // 隱藏結束字樣
+        // 確保重新開始時愛心是滿的
+        testHP(3); 
+        
+        // 隱藏所有結束相關的文字與介面
         document.getElementById('ui-text-gameover').classList.remove('anim-pop-end');
         document.getElementById('ui-text-timeup').classList.remove('anim-pop-end');
         
-        // 隱藏其他介面
+        // 隱藏所有圖層，確保直接進入倒數畫面
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none'; 
         document.getElementById('ui-input-screen').style.display = 'none';
         
-        testHP(3);
+        // 分數與計時器立刻歸零
         updateScoreDisplay(0);
         updateTimerDisplay(1000);
         
-        // 清空九宮格
-        document.querySelectorAll('.card-slot .num-wrapper').forEach(w => w.innerHTML = '');
+        // --- 強制大掃除：清空九宮格數字並恢復透明度，防止上一場殘影 ---
+        document.querySelectorAll('.card-slot').forEach(slot => {
+            slot.style.opacity = '1'; 
+            const wrapper = slot.querySelector('.num-wrapper');
+            if (wrapper) wrapper.innerHTML = ''; 
+        });
     }
 
     function startGameProcess() {
@@ -627,8 +634,17 @@
             slot.style.opacity = '0'; // 隱藏按過的
             
             state.currentTarget++;
-            
+
+            // --- 貼在這裡：判定這一輪是否點完，並執行回血與進入下一輪 ---
             if (state.currentTarget > state.maxTargetInWave) {
+                // 每 5 輪 (5, 10, 15...) 且沒滿血時回血
+                if (state.round % 5 === 0 && state.hearts < 3) {
+                    state.hearts++;           // 生命值 +1
+                    testHP(state.hearts);     // 更新愛心 UI
+                    playSnd(1200, 'sine', 0.3); // 播放回血音效
+                    createHealEffect();       // 播放愛心噴發特效
+                }
+                
                 state.round++;
                 setTimeout(spawnWave, 200);
             }
@@ -728,7 +744,28 @@
             setTimeout(() => star.remove(), 800);
         }
     }
+    // --- 補上這個功能定義，特效才會跑出來 ---
+    function createHealEffect() {
+        const container = document.getElementById('game-container');
+        const heart = document.createElement('img');
+        heart.src = 'assets/icon_heart.webp';
+        heart.style.position = 'absolute';
+        heart.style.width = '60px';
+        heart.style.height = 'auto';
+        heart.style.zIndex = '999';
+        heart.style.left = '360px'; // 畫面中心
+        heart.style.top = '460px';  // 熊熊位置
+        heart.style.transform = 'translate(-50%, -50%) scale(0.5)';
+        heart.style.transition = 'transform 1s ease-out, opacity 1s ease-out, top 1s ease-out';
+        container.appendChild(heart);
 
+        requestAnimationFrame(() => {
+            heart.style.top = '260px';
+            heart.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            heart.style.opacity = '0';
+        });
+        setTimeout(() => heart.remove(), 1000);
+    }
     function createHitEffect(x, y, comboVal) {
         const container = document.getElementById('game-container');
         const wrapper = document.createElement('div');
