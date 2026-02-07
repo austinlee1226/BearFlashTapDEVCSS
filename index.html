@@ -7,7 +7,7 @@
     <style>
         /* --- 基礎環境設定 --- */
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body, html { width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: sans-serif; }
+        body, html { width: 100%; height: 100%; background: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: sans-serif; user-select: none; }
         
         #game-container { 
             width: 720px; height: 1280px; 
@@ -17,22 +17,23 @@
             touch-action: none; 
         }
         
-        .ui-element { position: absolute; transform: translate(-50%, -50%); transform-origin: center; user-select: none; -webkit-user-drag: none; }
+        .ui-element { position: absolute; transform: translate(-50%, -50%); transform-origin: center; user-select: none; -webkit-user-drag: none; pointer-events: none; }
 
         /* --- 1. 背景與角色 --- */
         #bg-main { width: 720px; height: 1280px; left: 360px; top: 640px; z-index: 0; }
         
-        .vfx-thunder { width: 244px; height: 234px; z-index: 1; pointer-events: none; opacity: 1; }
-        #vfx-thunder-left { left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1); animation: thunder-flicker-off 5s infinite; }
-        #vfx-thunder-right { left: 711px; top: 293px; transform: translate(-50%, -50%); animation: thunder-flicker-off 7s infinite 2s; }
+        /* 背景閃電 VFX - 預設隱藏，由 JS 控制 class */
+        .vfx-thunder { width: 244px; height: 234px; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.1s; }
+        #vfx-thunder-left { left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1); }
+        #vfx-thunder-right { left: 711px; top: 293px; transform: translate(-50%, -50%); }
+        .thunder-active { opacity: 1 !important; animation: thunder-flicker 0.5s infinite; }
+        @keyframes thunder-flicker { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-        @keyframes thunder-flicker-off {
-            0%, 92% { opacity: 1; } 93% { opacity: 0; } 94% { opacity: 1; } 95% { opacity: 0.3; } 96% { opacity: 1; } 100% { opacity: 1; }
-        }
-
+        /* 角色設定 */
         #ui-character-bear, #ui-character-devil { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; transition: filter 0.1s; }
         #ui-character-devil { display: none; }
 
+        /* 角色動畫 */
         @keyframes anim-shake {
             0% { transform: translate(-50%, -50%) rotate(0deg); }
             25% { transform: translate(-51%, -50%) rotate(-1deg); } 
@@ -40,17 +41,17 @@
             75% { transform: translate(-50.5%, -50%) rotate(-0.5deg); }
             100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
-        .effect-shake { animation: anim-shake 0.15s ease-in-out; } 
+        .effect-shake { animation: anim-shake 0.15s ease-in-out; }
 
         @keyframes anim-sink {
             0% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(0); }
             20% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(1); }
-            100% { transform: translate(-50%, 0%); opacity: 0; filter: grayscale(1); } 
+            100% { transform: translate(-50%, -20%); opacity: 0; filter: grayscale(1); }
         }
-        .effect-sink { animation: anim-sink 1.2s ease-in forwards; }
+        .effect-sink { animation: anim-sink 1.0s ease-in forwards; }
 
         @keyframes anim-rise {
-            0% { transform: translate(-50%, 0%); opacity: 0; } 
+            0% { transform: translate(-50%, -20%); opacity: 0; }
             100% { transform: translate(-50%, -50%); opacity: 1; }
         }
         .effect-rise { display: block !important; animation: anim-rise 0.8s ease-out forwards; }
@@ -63,20 +64,13 @@
             transform: translate(-50%, -50%) scale(1.2); z-index: 30;
             display: flex; justify-content: center; align-items: center; gap: 0; pointer-events: none;
         }
-        @keyframes timer-panic {
-            0% { transform: translate(-50%, -50%) scale(1.2); filter: none; }
-            50% { transform: translate(-50%, -50%) scale(1.3); filter: sepia(1) hue-rotate(-50deg) saturate(3); } 
-            100% { transform: translate(-50%, -50%) scale(1.2); filter: none; }
-        }
-        .timer-panic-mode { animation: timer-panic 0.5s infinite; }
-
         .timer-digit { height: 100%; width: 50px; object-fit: contain; margin: 0 -3px; }
         .timer-colon-slot { height: 60%; width: 30px; object-fit: contain; margin-top: -5px; }
 
         /* --- 3. 遊戲核心 UI --- */
         #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 20; }
         #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 20; }
-        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.1s linear; }
+        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(0); transition: transform 0.1s linear; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 22; pointer-events: none; }
         
         #ui-game-score {
@@ -85,35 +79,43 @@
         }
         .score-digit-img { height: 20px; width: auto; object-fit: contain; }
 
-        /* HIT 特效 */
+        /* HIT 特效容器 */
         .hit-effect-wrapper {
             position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: center;
-            gap: 5px; pointer-events: none; z-index: 999; transform: translate(-50%, -50%);
-            animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+            gap: 5px; pointer-events: none; 
+            z-index: 999; transform: translate(-50%, -50%);
+            animation: hit-float 0.8s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
         }
         .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -10px; }
         .hit-text-img { width: 74px; height: 38px; object-fit: contain; margin-left: 5px; }
-
         @keyframes hit-float {
             0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            10% { transform: translate(-50%, -150%) scale(1.3); opacity: 1; } 
-            100% { transform: translate(-50%, -450%) scale(1.0); opacity: 0; } 
+            20% { transform: translate(-50%, -100%) scale(1.3); opacity: 1; } 
+            100% { transform: translate(-50%, -200%) scale(1.0); opacity: 0; } 
         }
+
+        /* 錯誤特效 */
+        .wrong-shake { animation: card-shake-red 0.4s ease-in-out; filter: sepia(1) hue-rotate(-50deg) saturate(3); }
+        @keyframes card-shake-red { 0%, 100% { transform: translate(-50%, -50%); } 20% { transform: translate(-60%, -50%); } 40% { transform: translate(-40%, -50%); } 60% { transform: translate(-55%, -50%); } 80% { transform: translate(-45%, -50%); } }
 
         /* 九宮格按鈕 */
         #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .card-slot { 
             position: absolute; width: 230px; height: 230px; transform: translate(-50%, -50%); 
-            pointer-events: auto; cursor: pointer; transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1), opacity 0.1s; touch-action: manipulation; 
-            display: none; 
+            pointer-events: auto; cursor: pointer; transition: transform 0.08s; touch-action: manipulation; 
         }
-        .card-slot.pressed { transform: translate(-50%, -50%) scale(0.92) !important; filter: brightness(0.9); }
-        .btn-card-base { width: 100%; height: 100%; display: block; }
+        .card-slot.pressed { transform: translate(-50%, -50%) scale(0.92); filter: brightness(0.9); }
+        .card-slot.vanished { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(0.5); transition: opacity 0.2s, transform 0.2s; }
+        
+        .btn-card-base { width: 100%; height: 100%; display: block; pointer-events: none;}
         .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
         .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
 
-        /* 星星粒子 */
-        .particle-star { position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 999; transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; }
+        /* 星星粒子特效 */
+        .particle-star { 
+            position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 999; 
+            transform-origin: center; transition: transform 0.8s, opacity 0.8s; opacity: 1; 
+        }
 
         .hud-item { z-index: 15; transition: opacity 0.2s; }
         #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
@@ -122,33 +124,32 @@
         #ui-icon-star { width: 44px; height: 44px; left: 528px; top: 99px; z-index: 15; }
 
         .countdown-img { z-index: 50; display: none; pointer-events: none; }
-        @keyframes popIn {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
-        }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; } }
         .anim-pop { animation: popIn 0.5s ease-out forwards; }
         #ui-text-3 { width: 167px; height: 211px; left: 358px; top: 757px; }
         #ui-text-2 { width: 169px; height: 211px; left: 356px; top: 757px; }
         #ui-text-1 { width: 101px; height: 212px; left: 355px; top: 757px; }
         #ui-text-go { width: 343px; height: 185px; left: 357px; top: 757px; }
 
-        #ui-home-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 100; }
-        #ui-mask { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); cursor: pointer; }
+        /* --- UI Layers --- */
+        #ui-home-screen, #ui-input-screen, #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 100; }
+        #ui-input-screen { z-index: 180; display: none; }
+        #ui-result-screen { z-index: 200; display: none; }
+        
+        #ui-mask { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
         #ui-panel-start { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 101; }
         #character-home { width: 547px; height: 496px; left: 361px; top: 676px; z-index: 102; }
         #logo-main { width: 514px; height: 216px; left: 369px; top: 315px; z-index: 102; }
         
-        #btn-coffee, #btn-share, #btn-start { z-index: 103; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+        #btn-coffee, #btn-share, #btn-start { z-index: 103; cursor: pointer; transition: transform 0.1s; position: absolute; transform: translate(-50%, -50%); }
         #btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; }
         #btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; }
         #btn-start { width: 522px; height: 101px; left: 360px; top: 981px; }
-        
         .btn-pressed { transform: translate(-50%, -50%) scale(0.95) !important; filter: brightness(0.9); }
-        #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
-        #btn-start.pressed ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
 
-        #ui-input-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 180; display: none; }
+        #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; transform: translate(-50%, -50%); }
+        
+        /* Input Screen */
         #ui-panel-input { width: 540px; height: 240px; left: 360px; top: 600px; z-index: 181; }
         #ui-input-field {
             position: absolute; left: 362px; top: 640px; transform: translate(-50%, -50%);
@@ -157,36 +158,25 @@
             color: #fff; font-size: 36px; font-weight: 900; text-align: center;
             font-family: monospace; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
         }
-        #ui-input-field::placeholder { color: rgba(255,255,255,0.3); }
-        #btn-confirm-name { width: 522px; height: 101px; left: 360px; top: 800px; z-index: 182; cursor: pointer; }
+        #btn-confirm-name { width: 522px; height: 101px; left: 360px; top: 800px; z-index: 182; cursor: pointer; position: absolute; transform: translate(-50%, -50%);}
 
-        #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
+        /* Result Screen */
         #res-panel { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 201; }
         #res-panel-rank { width: 547px; height: 653px; left: 361px; top: 598px; z-index: 202; }
         #logo-rank-title { width: 378px; height: 162px; left: 360px; top: 184px; z-index: 205; }
-
-        #rank-content-layer {
-            position: absolute; left: 361px; top: 598px; width: 540px; height: 600px; 
-            border-radius: 30px; overflow: hidden; transform: translate(-50%, -50%); z-index: 203;
-        }
-        #rank-scroll-view {
-            width: 100%; height: 100%; overflow-y: scroll; -webkit-overflow-scrolling: touch;
-            scrollbar-width: none; -ms-overflow-style: none; 
-            display: flex; flex-direction: column; align-items: center;
-            padding-top: 10px; padding-bottom: 120px; 
-        }
+        #rank-content-layer { position: absolute; left: 361px; top: 598px; width: 540px; height: 600px; border-radius: 30px; overflow: hidden; transform: translate(-50%, -50%); z-index: 203; }
+        #rank-scroll-view { width: 100%; height: 100%; overflow-y: scroll; -webkit-overflow-scrolling: touch; scrollbar-width: none; display: flex; flex-direction: column; align-items: center; padding-top: 10px; padding-bottom: 120px; }
         #rank-scroll-view::-webkit-scrollbar { display: none; }
 
         .rank-row {
             width: 522px; height: 101px; margin-bottom: -2px; 
             background-image: url('assets/ui_rank_row_normal.webp');
             background-size: contain; background-repeat: no-repeat; background-position: center;
-            flex-shrink: 0; position: relative; 
-            font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+            flex-shrink: 0; position: relative; font-weight: 900; text-shadow: 2px 2px 0px rgba(0,0,0,0.5);
         }
-        .rank-num { position: absolute; left: 20px; width: 82px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 222, 0); font-size: 40px; font-style: normal; white-space: nowrap; }
+        .rank-num { position: absolute; left: 20px; width: 82px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 222, 0); font-size: 40px; }
         .rank-name { position: absolute; left: 106px; width: 152px; top: 50%; transform: translateY(-50%); text-align: left; color: rgb(255, 255, 255); font-size: 28px; white-space: nowrap; overflow: hidden; }
-        .rank-flag { position: absolute; left: 260px; top: 50%; transform: translateY(-50%); font-size: 28px; font-style: normal; text-shadow: none; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); z-index: 2; }
+        .rank-flag { position: absolute; left: 260px; top: 50%; transform: translateY(-50%); font-size: 28px; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.5)); z-index: 2; }
         .rank-score { position: absolute; left: 258px; width: 240px; top: 50%; transform: translateY(-50%); display: flex; justify-content: flex-end; align-items: center; gap: -2px; }
         .rank-score-digit { height: 28px; width: auto; object-fit: contain; }
 
@@ -194,26 +184,21 @@
             position: absolute; left: 360px; top: 855px; width: 522px; height: 101px;
             transform: translate(-50%, -50%); z-index: 205; 
             background-image: url('assets/ui_rank_row_self.webp');
-            background-size: contain; background-repeat: no-repeat; background-position: center;
-            font-weight: 900; pointer-events: none;
+            background-size: contain; background-repeat: no-repeat; background-position: center; font-weight: 900; pointer-events: none;
         }
 
-        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; }
-        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; }
-        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; }
-        #ui-text-retry { width: 323px; height: 55px; left: 362px; top: 985px; z-index: 204; pointer-events: none; transition: transform 0.1s; }
-        #res-btn-retry.pressed ~ #ui-text-retry { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
+        #res-btn-coffee { width: 249px; height: 87px; left: 224px; top: 1085px; z-index: 203; cursor: pointer; position: absolute; transform: translate(-50%, -50%); }
+        #res-btn-share { width: 252px; height: 88px; left: 495px; top: 1087px; z-index: 203; cursor: pointer; position: absolute; transform: translate(-50%, -50%); }
+        #res-btn-retry { width: 522px; height: 101px; left: 360px; top: 981px; z-index: 203; cursor: pointer; position: absolute; transform: translate(-50%, -50%); }
+        #ui-text-retry { width: 323px; height: 55px; left: 362px; top: 985px; z-index: 204; pointer-events: none; transition: transform 0.1s; transform: translate(-50%, -50%); }
 
         #bg-bar-top { width: 720px; height: 53px; left: 360px; top: 27px; z-index: 20; }
         #bg-bar-bottom { width: 720px; height: 69px; left: 360px; top: 1246px; z-index: 20; }
-
-        #debug-panel { position: fixed; top: 10px; right: 10px; z-index: 999; background: rgba(0,0,0,0.9); color: #fff; padding: 12px; border-radius: 8px; width: 210px; font-family: monospace; }
-        .debug-group { margin-bottom: 12px; border-bottom: 1px solid #444; padding-bottom: 8px; }
-        .debug-group label { display: block; font-size: 11px; color: #ffeb3b; margin-bottom: 5px; }
-        .debug-btn { background: #444; color: #fff; border: 1px solid #666; padding: 4px; margin: 2px; cursor: pointer; border-radius: 4px; font-size: 10px; width: 45%; }
     </style>
 </head>
 <body>
+
+<audio id="bgm-player" src="assets/bgm.mp3" loop preload="auto"></audio>
 
 <div id="game-container">
     <img src="assets/bg_main.webp" class="ui-element" id="bg-main">
@@ -226,8 +211,8 @@
     <img src="assets/panel_main.webp" class="ui-element" id="ui-panel-main">
 
     <div id="ui-timer-container">
-        <img id="timer-d1" class="timer-digit" src="assets/num_ui_0.webp">
-        <img id="timer-d2" class="timer-digit" src="assets/num_ui_6.webp">
+        <img id="timer-d1" class="timer-digit" src="assets/num_ui_1.webp">
+        <img id="timer-d2" class="timer-digit" src="assets/num_ui_0.webp">
         <img class="timer-colon-slot" src="assets/num_ui_colon.webp">
         <img id="timer-d3" class="timer-digit" src="assets/num_ui_0.webp">
         <img id="timer-d4" class="timer-digit" src="assets/num_ui_0.webp">
@@ -238,7 +223,9 @@
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-3">
     <img src="assets/icon_star.webp" class="ui-element" id="ui-icon-star">
     
-    <div id="ui-game-score"></div>
+    <div id="ui-game-score">
+        <img src="assets/num_grid_0.webp" class="score-digit-img">
+    </div>
 
     <img src="assets/ui_text_combo_time.webp" class="ui-element" id="ui-text-combo-time">
     <img src="assets/ui_combo_bar_bg.webp" class="ui-element" id="ui-combo-bar-bg">
@@ -263,13 +250,13 @@
     <img src="assets/ui_text_go.webp" class="ui-element countdown-img" id="ui-text-go">
 
     <div id="ui-home-screen">
-        <div id="ui-mask" onclick="this.parentElement.style.display='none'"></div>
+        <div id="ui-mask"></div>
         <img src="assets/ui_panel_start.webp" class="ui-element" id="ui-panel-start">
         <img src="assets/character_home.webp" class="ui-element" id="character-home">
         <img src="assets/logo_main.webp" class="ui-element" id="logo-main">
-        <img src="assets/btn_coffee.webp" class="ui-element" id="btn-coffee" onclick="alert('Support Button!')">
-        <img src="assets/btn_share.webp" class="ui-element" id="btn-share" onclick="alert('Share Button!')">
-        <img src="assets/btn_start.webp" class="ui-element" id="btn-start" onclick="startGameProcess()">
+        <img src="assets/btn_coffee.webp" class="ui-element" id="btn-coffee">
+        <img src="assets/btn_share.webp" class="ui-element" id="btn-share">
+        <img src="assets/btn_start.webp" class="ui-element" id="btn-start">
         <img src="assets/ui_text_start.webp" class="ui-element" id="ui-text-start">
     </div>
 
@@ -277,11 +264,11 @@
         <div style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);"></div>
         <img src="assets/ui_panel_input_name.webp" class="ui-element" id="ui-panel-input">
         <input type="text" id="ui-input-field" placeholder="INPUT NAME" maxlength="8">
-        <img src="assets/btn_start.webp" class="ui-element" id="btn-confirm-name" onclick="submitName()">
+        <img src="assets/btn_start.webp" class="ui-element" id="btn-confirm-name">
     </div>
 
     <div id="ui-result-screen">
-        <div id="ui-mask-result" style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);" onclick="this.parentElement.style.display='none'"></div>
+        <div id="ui-mask-result" style="position:absolute; width:100%; height:100%; background:rgba(0,0,0,0.7);"></div>
         <img src="assets/logo_rank_title.webp" class="ui-element" id="logo-rank-title">
         <img src="assets/ui_panel_start.webp" class="ui-element" id="res-panel">
         <img src="assets/ui_panel_rank.webp" class="ui-element" id="res-panel-rank"> 
@@ -289,14 +276,14 @@
             <div id="rank-scroll-view"></div>
         </div>
         <div id="rank-fixed-row">
-            <span class="rank-num">6</span>
+            <span class="rank-num">?</span>
             <span class="rank-name" id="my-rank-name">YOU</span>
             <span class="rank-flag">🇹🇼</span>
             <div class="rank-score" id="my-rank-score-container"></div>
         </div>
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
         <img src="assets/btn_share.webp" class="ui-element" id="res-btn-share">
-        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="restartGame()">
+        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry">
         <img src="assets/ui_text_retry.webp" class="ui-element" id="ui-text-retry">
     </div>
 
@@ -304,355 +291,151 @@
     <img src="assets/bg_bar_bottom.webp" class="ui-element" id="bg-bar-bottom">
 </div>
 
-<div id="debug-panel">
-    <div class="debug-group">
-        <label>畫面測試</label>
-        <button class="debug-btn" onclick="showInputScreen()" style="background:#2196f3; border-color:#64b5f6;">⌨ 測試輸入介面</button>
-        <button class="debug-btn" onclick="showResultScreen()" style="background:#f57c00; border-color:#ffb74d;">💀 顯示結算介面</button>
-        <button class="debug-btn" onclick="triggerBearDeath()" style="background:#d32f2f; border-color:#ef5350;">🐻 測試變身</button>
-    </div>
-    <div class="debug-group">
-        <label>數字縮放</label>
-        <button class="debug-btn" onclick="testDigits(2)">2位</button>
-        <button class="debug-btn" onclick="testDigits(5)">5位</button>
-    </div>
-    <div class="debug-group">
-        <label>HP / Bar 測試</label>
-        <button class="debug-btn" onclick="testHP(1)">1 HP</button>
-        <button class="debug-btn" onclick="testHP(3)">全滿</button>
-        <input type="range" id="debug-slider" min="0" max="100" value="100" oninput="testBar(this.value)" style="width:95%; margin-top:5px;">
-    </div>
-    <button class="debug-btn" style="width:100%; background:#c62828;" onclick="this.parentElement.style.display='none'">隱藏面板</button>
-</div>
+<script type="module">
+    // --- 1. Firebase 整合 (Pixel JD Logic) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, limit, onSnapshot, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-<script>
-    /* --- 核心變數 --- */
-    const MAX_TIME = 10.0;
-    const MAX_HEARTS = 3;
-    const TIME_PENALTY = 1.0;
-    const TIME_BONUS = 0.5;
-    const COMBO_WINDOW_MAX = 1000; 
-    const COMBO_WINDOW_MIN = 300; 
+    const firebaseConfig = {
+        apiKey: "AIzaSyDuA9GeD7AaHwayISu_vf3DJldOP9jq-4A",
+        authDomain: "bearflashtap.firebaseapp.com",
+        projectId: "bearflashtap",
+        storageBucket: "bearflashtap.firebasestorage.app",
+        messagingSenderId: "517068547423",
+        appId: "1:517068547423:web:36b6dd81d8e330f97582ea"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const scoresCol = collection(db, "leaderboard");
 
-    let gameState = {
-        isPlaying: false,
+    // --- 2. 遊戲狀態與資源 (Logic Adapter) ---
+    let playerName = localStorage.getItem('pixelJD_Player') || "";
+    let state = {
+        currentTime: 10.0,
         score: 0,
-        hearts: 3,
-        timeLeft: MAX_TIME,
+        nextNum: 1,
+        startNumInRound: 1,
+        rounds: 0,
+        isPlaying: false,
+        lives: 3,
+        loop: null,
         combo: 0,
-        round: 1, // 現在是第幾輪
-        currentTarget: 1, // 當前要點的數字
-        maxTargetInWave: 9, // 本輪最大數字
-        lastClickTime: 0,
-        numbersOnGrid: [] 
+        lastTapTime: 0,
+        gridValues: [] // 儲存每個格子的數值
     };
 
-    let gameTimer = null;
-    let playerName = "YOU"; 
-    let lastInputTime = 0;
-    const INPUT_COOLDOWN = 60; 
+    // 音效管理
+    let audioCtx = null;
+    const bgm = document.getElementById('bgm-player');
+    let isMusicPlaying = false;
 
-    /* --- DOM 快取 --- */
-    const timerEls = {
-        container: document.getElementById('ui-timer-container'),
-        d1: document.getElementById('timer-d1'),
-        d2: document.getElementById('timer-d2'),
-        d3: document.getElementById('timer-d3'),
-        d4: document.getElementById('timer-d4')
-    };
-    const comboBarFill = document.getElementById('ui-combo-bar-fill');
-    const cardSlots = Array.from(document.querySelectorAll('.card-slot'));
+    function initAudio() { 
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); 
+        if (audioCtx.state === 'suspended') audioCtx.resume(); 
+    }
+    
+    function toggleBGM(play) {
+        if (play && !isMusicPlaying) { 
+            bgm.volume = 0.4; 
+            bgm.play().then(() => isMusicPlaying = true).catch(()=>{}); 
+        } else if(!play) { 
+            bgm.pause(); bgm.currentTime = 0; isMusicPlaying = false; 
+        }
+    }
 
-    /* --- 初始化 --- */
-    window.addEventListener('resize', resizeGame);
-    window.addEventListener('load', () => {
-        resizeGame();
-        preloadGameAssets();
-        initLeaderboard(); 
+    function playSnd(type) {
+        if (!audioCtx) return;
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        const now = audioCtx.currentTime;
         
-        cardSlots.forEach((slot, index) => {
-            setupButtonFeedback(slot, true, index);
-        });
+        if (type === 'hit') {
+            o.frequency.setValueAtTime(800 + (Math.min(state.combo, 50) * 20), now);
+            o.type = 'sine';
+            g.gain.setValueAtTime(0.3, now);
+            g.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            o.start(); o.stop(now + 0.1);
+        } else if (type === 'error') {
+            o.frequency.setValueAtTime(150, now);
+            o.type = 'sawtooth';
+            g.gain.setValueAtTime(0.3, now);
+            g.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            o.start(); o.stop(now + 0.3);
+        } else if (type === 'heal') {
+            o.frequency.setValueAtTime(400, now);
+            o.frequency.linearRampToValueAtTime(800, now + 0.2);
+            g.gain.setValueAtTime(0.3, now);
+            g.gain.linearRampToValueAtTime(0, now + 0.4);
+            o.start(); o.stop(now + 0.4);
+        }
+        o.connect(g); g.connect(audioCtx.destination);
+    }
 
-        setupButtonFeedback(document.getElementById('btn-start'));
-        setupButtonFeedback(document.getElementById('btn-coffee'));
-        setupButtonFeedback(document.getElementById('btn-share'));
-        setupButtonFeedback(document.getElementById('res-btn-retry'));
-        setupButtonFeedback(document.getElementById('res-btn-coffee'));
-        setupButtonFeedback(document.getElementById('res-btn-share'));
-        setupButtonFeedback(document.getElementById('btn-confirm-name'));
-
-        document.getElementById('ui-input-field').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') submitName();
-        });
-        
-        updateScoreDisplay(0);
-        updateTimerDisplay(MAX_TIME);
-    });
+    // --- 3. 視覺整合適配器 (UI Adapter) ---
+    // 負責把邏輯數值轉換成圖片，塞進 Layout
 
     function resizeGame() {
         const container = document.getElementById('game-container');
         const scale = Math.min(window.innerWidth / 720, window.innerHeight / 1280);
         container.style.transform = `scale(${scale})`;
     }
+    window.addEventListener('resize', resizeGame);
+    window.addEventListener('load', resizeGame);
 
-    function preloadGameAssets() {
-        const assets = [
-            'num_ui_0.webp', 'num_ui_1.webp', 'num_ui_2.webp', 'num_ui_3.webp', 'num_ui_4.webp',
-            'num_ui_5.webp', 'num_ui_6.webp', 'num_ui_7.webp', 'num_ui_8.webp', 'num_ui_9.webp', 'num_ui_colon.webp',
-            'num_grid_0.webp', 'num_grid_1.webp', 'num_grid_2.webp', 'num_grid_3.webp', 'num_grid_4.webp',
-            'num_grid_5.webp', 'num_grid_6.webp', 'num_grid_7.webp', 'num_grid_8.webp', 'num_grid_9.webp',
-            'ui_rank_row_normal.webp', 'ui_rank_row_self.webp', 'logo_rank_title.webp',
-            'icon_star.webp', 'vfx_thunder.webp', 'ui_text_hit.webp', 'character_bear_devil.webp',
-            'ui_panel_input_name.webp'
-        ];
-        assets.forEach(name => { const img = new Image(); img.src = 'assets/' + name; });
-    }
-
-    /* --- 遊戲流程 --- */
-    function startGameProcess() {
-        // Reset State
-        gameState = {
-            isPlaying: true,
-            score: 0,
-            hearts: MAX_HEARTS,
-            timeLeft: MAX_TIME,
-            combo: 0,
-            round: 1,
-            currentTarget: 1,
-            maxTargetInWave: 9,
-            lastClickTime: Date.now(),
-            numbersOnGrid: []
-        };
-
-        // UI Reset
-        document.getElementById('ui-home-screen').style.display = 'none';
-        document.getElementById('ui-result-screen').style.display = 'none'; 
-        document.getElementById('ui-input-screen').style.display = 'none';
-        document.getElementById('ui-character-bear').style.display = 'block';
-        document.getElementById('ui-character-bear').classList.remove('effect-sink');
-        document.getElementById('ui-character-devil').style.display = 'none';
-        document.getElementById('ui-character-devil').classList.remove('effect-rise');
-        timerEls.container.classList.remove('timer-panic-mode');
-        updateScoreDisplay(0);
-        testHP(3);
-        
-        // 倒數動畫
-        const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
-        let delay = 0;
-        ids.forEach(id => {
-            const el = document.getElementById(id);
-            el.style.display = 'none';
-            el.classList.remove('anim-pop');
-        });
-        ids.forEach((id, index) => {
-            setTimeout(() => {
-                if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
-                const el = document.getElementById(id);
-                el.style.display = 'block';
-                el.classList.add('anim-pop');
-                if (id === 'ui-text-go') {
-                    setTimeout(() => { 
-                        el.style.display = 'none'; 
-                        startGameLoop(); 
-                    }, 500);
-                }
-            }, delay);
-            delay += 800;
-        });
-    }
-
-    function startGameLoop() {
-        spawnWave(); // 產生第一波
-        gameState.lastClickTime = Date.now();
-        
-        // 主計時器
-        if(gameTimer) clearInterval(gameTimer);
-        gameTimer = setInterval(() => {
-            if(!gameState.isPlaying) return;
-
-            gameState.timeLeft -= 0.01; 
-            
-            // 低時警示
-            if(gameState.timeLeft <= 3.0 && !timerEls.container.classList.contains('timer-panic-mode')) {
-                timerEls.container.classList.add('timer-panic-mode');
-            } else if (gameState.timeLeft > 3.0) {
-                timerEls.container.classList.remove('timer-panic-mode');
-            }
-
-            if (gameState.timeLeft <= 0) {
-                gameState.timeLeft = 0;
-                gameOver();
-            }
-            updateTimerDisplay(gameState.timeLeft);
-            updateComboBar();
-        }, 10);
-    }
-
-    function stopGame() {
-        gameState.isPlaying = false;
-        if(gameTimer) clearInterval(gameTimer);
-        timerEls.container.classList.remove('timer-panic-mode');
-    }
-
-    function restartGame() {
-        stopGame();
-        startGameProcess();
-    }
-
-    /* --- 核心邏輯 (Wave Mode) --- */
-    function spawnWave() {
-        // [修正] 邏輯：每輪起點 = 輪數
-        // Round 1: 1~9
-        // Round 2: 2~10
-        // Round 3: 3~11
-        const startNum = gameState.round;
-        gameState.currentTarget = startNum;
-        gameState.maxTargetInWave = startNum + 8;
-
-        // 產生數字
-        let nums = [];
-        for(let i=0; i<9; i++) nums.push(startNum + i);
-        // 洗牌
-        for (let i = nums.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [nums[i], nums[j]] = [nums[j], nums[i]];
-        }
-        gameState.numbersOnGrid = nums;
-
-        // 渲染
-        cardSlots.forEach((slot, i) => {
-            slot.style.display = 'block'; 
-            slot.style.opacity = '1';
-            slot.style.pointerEvents = 'auto';
-            setGridNumber(i, nums[i]);
-        });
-    }
-
-    function handleCardTap(index) {
-        if(!gameState.isPlaying) return;
-
-        const clickedNum = gameState.numbersOnGrid[index];
-        const slot = cardSlots[index];
-
-        // 必須點擊當前最小的數字
-        if (clickedNum === gameState.currentTarget) {
-            // --- HIT ---
-            const cx = parseInt(slot.style.left);
-            const cy = parseInt(slot.style.top);
-            createStarBurst(cx, cy);
-            createHitEffect(cx, cy, gameState.combo + 1);
-            
-            gameState.currentTarget++;
-            gameState.combo++;
-            gameState.score += (100 + gameState.combo * 10);
-            gameState.timeLeft = Math.min(MAX_TIME, gameState.timeLeft + TIME_BONUS);
-            gameState.lastClickTime = Date.now();
-
-            updateScoreDisplay(gameState.score);
-            
-            // [修正] 卡片隱藏 (等待整波清除)
-            slot.style.opacity = '0';
-            slot.style.pointerEvents = 'none';
-
-            // [修正] 檢查這波是否清空
-            if (gameState.currentTarget > gameState.maxTargetInWave) {
-                gameState.round++;
-                // 回血 (每5輪)
-                if (gameState.round % 5 === 1 && gameState.hearts < MAX_HEARTS) {
-                    gameState.hearts++;
-                    testHP(gameState.hearts);
-                }
-                setTimeout(spawnWave, 200); // 延遲一點點生成下一波
-            }
-
-        } else {
-            // --- MISS ---
-            gameState.hearts--;
-            testHP(gameState.hearts);
-            gameState.timeLeft -= TIME_PENALTY;
-            gameState.combo = 0;
-            
-            handleBearHit(); 
-
-            if(gameState.hearts <= 0) {
-                gameOver();
-            }
+    // 顯示分數圖片
+    function renderScore(score) {
+        const con = document.getElementById('ui-game-score');
+        con.innerHTML = '';
+        const str = score.toString().padStart(8, '0');
+        for (let char of str) {
+            const img = document.createElement('img');
+            img.src = `assets/num_grid_${char}.webp`;
+            img.className = 'score-digit-img';
+            con.appendChild(img);
         }
     }
 
-    function updateComboBar() {
-        if (gameState.combo === 0) {
-            comboBarFill.style.transform = `translate(-50%, -50%) scaleX(0)`;
-            return;
-        }
+    // 顯示計時圖片
+    function renderTimer(time) {
+        const sec = Math.floor(time);
+        const ms = Math.floor((time - sec) * 100);
+        const sStr = sec.toString().padStart(2, '0');
+        const mStr = ms.toString().padStart(2, '0');
         
-        const now = Date.now();
-        const timePassed = now - gameState.lastClickTime;
-        const allowedWindow = Math.max(COMBO_WINDOW_MIN, COMBO_WINDOW_MAX - (gameState.combo * 20)); 
-        
-        let pct = 1 - (timePassed / allowedWindow);
-        if (pct <= 0) {
-            pct = 0;
-            gameState.combo = 0; 
-        }
-        
-        comboBarFill.style.transform = `translate(-50%, -50%) scaleX(${pct})`;
+        document.getElementById('timer-d1').src = `assets/num_ui_${sStr[0]}.webp`;
+        document.getElementById('timer-d2').src = `assets/num_ui_${sStr[1]}.webp`;
+        document.getElementById('timer-d3').src = `assets/num_ui_${mStr[0]}.webp`;
+        document.getElementById('timer-d4').src = `assets/num_ui_${mStr[1]}.webp`;
     }
 
-    function gameOver() {
-        stopGame();
-        triggerBearDeath();
-    }
-
-    /* --- 視覺與特效 --- */
-    function setGridNumber(index, number) {
-        const slot = cardSlots[index];
+    // 顯示 Grid 數字
+    function renderGridSlot(index, number) {
+        const slot = document.getElementById(`slot-${index}`);
         const wrapper = slot.querySelector('.num-wrapper');
         const numStr = number.toString();
         wrapper.innerHTML = '';
+        
         for (let char of numStr) {
-            const img = document.createElement('img'); img.src = `assets/num_grid_${char}.webp`;
+            const img = document.createElement('img'); 
+            img.src = `assets/num_grid_${char}.webp`;
             wrapper.appendChild(img);
         }
-        let scaleValue = 1.0;
-        const len = numStr.length;
-        if (len === 2) scaleValue = 0.8;
-        else if (len === 3) scaleValue = 0.55;
-        else if (len >= 4) scaleValue = 0.4;
-        wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
+        
+        let scale = 1.0;
+        if (numStr.length === 2) scale = 0.8;
+        if (numStr.length >= 3) scale = 0.5;
+        wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        
+        slot.classList.remove('vanished');
     }
 
-    function createStarBurst(x, y) {
-        const container = document.getElementById('game-container');
-        for (let i = 0; i < 5; i++) {
-            const star = document.createElement('img');
-            star.src = 'assets/icon_star.webp';
-            star.className = 'particle-star';
-            const size = Math.random() * 40 + 60; 
-            star.style.width = `${size}px`; star.style.height = `${size}px`;
-            star.style.left = `${x}px`; star.style.top = `${y}px`;
-            star.style.transform = `translate(-50%, -50%) scale(0.5)`;
-            const angle = Math.random() * Math.PI * 2; 
-            const velocity = Math.random() * 150 + 100; 
-            const tx = Math.cos(angle) * velocity;
-            const ty = Math.sin(angle) * velocity;
-            const rot = Math.random() * 720; 
-            container.appendChild(star);
-            requestAnimationFrame(() => {
-                star.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0) rotate(${rot}deg)`;
-                star.style.opacity = '0';
-            });
-            setTimeout(() => star.remove(), 800);
-        }
-    }
-
-    function createHitEffect(x, y, comboVal) {
+    // 視覺特效：點擊光暈
+    function spawnHitEffect(x, y, comboVal) {
         const container = document.getElementById('game-container');
         const wrapper = document.createElement('div');
         wrapper.className = 'hit-effect-wrapper';
         wrapper.style.left = `${x}px`;
         wrapper.style.top = `${y - 50}px`; 
+        
         const valStr = comboVal.toString();
         for (let char of valStr) {
             const digit = document.createElement('img');
@@ -665,134 +448,295 @@
         hitImg.className = 'hit-text-img';
         wrapper.appendChild(hitImg);
         container.appendChild(wrapper);
-        setTimeout(() => wrapper.remove(), 1500); 
+        setTimeout(() => wrapper.remove(), 1000);
     }
 
-    function handleBearHit() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
-        activeBear.classList.remove('effect-shake');
-        void activeBear.offsetWidth; 
-        activeBear.classList.add('effect-shake');
-        setTimeout(() => activeBear.classList.remove('effect-shake'), 200);
-    }
-
-    function triggerBearDeath() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        bearNormal.classList.add('effect-sink');
-        setTimeout(() => {
-            bearNormal.style.display = 'none'; 
-            bearDevil.style.display = 'block'; 
-            bearDevil.classList.add('effect-rise');
-            setTimeout(showInputScreen, 1500); 
-        }, 1000); 
-    }
-
-    function setupButtonFeedback(element, isCard = false, index = -1) {
-        if (!element) return;
-        const pressClass = isCard ? 'pressed' : 'btn-pressed';
-        element.addEventListener('pointerdown', (e) => {
-            const now = Date.now();
-            if (now - lastInputTime < INPUT_COOLDOWN) return; 
-            lastInputTime = now;
-
-            element.classList.add(pressClass);
-            element.setPointerCapture(e.pointerId);
-
-            if (isCard && gameState.isPlaying) {
-                handleCardTap(index);
-            }
-        });
-        const release = () => { element.classList.remove(pressClass); };
-        element.addEventListener('pointerup', release);
-        element.addEventListener('pointerleave', release);
-        element.addEventListener('pointercancel', release);
-    }
-
-    function showInputScreen() {
-        document.getElementById('ui-input-screen').style.display = 'block';
-        document.getElementById('ui-input-field').focus();
-    }
-
-    function submitName() {
-        const inputVal = document.getElementById('ui-input-field').value.trim();
-        if (inputVal) playerName = inputVal.substring(0, 8); 
-        document.getElementById('ui-input-screen').style.display = 'none';
-        showResultScreen();
-    }
-
-    function showResultScreen() {
-        document.getElementById('ui-result-screen').style.display = 'block';
-        document.getElementById('my-rank-name').textContent = playerName;
-        const myScoreContainer = document.getElementById('my-rank-score-container');
-        if(myScoreContainer) myScoreContainer.innerHTML = getScoreHtml(gameState.score);
-    }
-
-    function updateScoreDisplay(newScore) {
-        const scoreContainer = document.getElementById('ui-game-score');
-        scoreContainer.innerHTML = ''; 
-        const scoreStr = newScore.toString().padStart(8, '0');
-        for (let char of scoreStr) {
-            const img = document.createElement('img');
-            img.src = `assets/num_grid_${char}.webp`;
-            img.className = 'score-digit-img';
-            scoreContainer.appendChild(img);
+    // 視覺特效：星星
+    function spawnStars(x, y) {
+        const container = document.getElementById('game-container');
+        for (let i = 0; i < 5; i++) {
+            const star = document.createElement('img');
+            star.src = 'assets/icon_star.webp';
+            star.className = 'particle-star';
+            const size = Math.random() * 40 + 40;
+            star.style.width = `${size}px`; star.style.height = `${size}px`;
+            star.style.left = `${x}px`; star.style.top = `${y}px`;
+            const angle = Math.random() * 6.28;
+            const dist = Math.random() * 100 + 50;
+            container.appendChild(star);
+            
+            requestAnimationFrame(() => {
+                star.style.transform = `translate(calc(-50% + ${Math.cos(angle)*dist}px), calc(-50% + ${Math.sin(angle)*dist}px)) scale(0)`;
+                star.style.opacity = '0';
+            });
+            setTimeout(() => star.remove(), 800);
         }
     }
 
-    function getScoreHtml(score) {
-        const str = score.toString().padStart(8, '0');
-        let html = '';
-        for(let char of str) html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
-        return html;
+    // 熊熊受擊動畫
+    function triggerBearAnim() {
+        const bear = document.getElementById('ui-character-bear');
+        bear.classList.remove('effect-shake');
+        void bear.offsetWidth; 
+        bear.classList.add('effect-shake');
+        
+        // 閃電特效
+        if (state.combo > 10) {
+            document.querySelectorAll('.vfx-thunder').forEach(el => el.classList.add('thunder-active'));
+            setTimeout(() => document.querySelectorAll('.vfx-thunder').forEach(el => el.classList.remove('thunder-active')), 200);
+        }
     }
 
-    function updateTimerDisplay(totalSecs) {
-        const seconds = Math.floor(totalSecs);
-        const millis = Math.floor((totalSecs % 1) * 100);
-        const sStr = seconds.toString().padStart(2, '0');
-        const mStr = millis.toString().padStart(2, '0');
-        if (timerEls.d1.src.indexOf(`num_ui_${sStr[0]}.webp`) === -1) timerEls.d1.src = `assets/num_ui_${sStr[0]}.webp`;
-        if (timerEls.d2.src.indexOf(`num_ui_${sStr[1]}.webp`) === -1) timerEls.d2.src = `assets/num_ui_${sStr[1]}.webp`;
-        if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
-        if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
+    // --- 4. 核心遊戲邏輯 (Game Loop) ---
+
+    function initRound() {
+        const nums = Array.from({length: 9}, (_, i) => state.startNumInRound + i).sort(() => Math.random() - 0.5);
+        state.gridValues = nums;
+        nums.forEach((val, i) => renderGridSlot(i, val));
     }
 
-    function initLeaderboard() {
+    function handleTap(index) {
+        if (!state.isPlaying) return;
+        const targetVal = state.gridValues[index];
+        const slot = document.getElementById(`slot-${index}`);
+        
+        if (targetVal === state.nextNum) {
+            // Success
+            state.combo++;
+            state.score += (10 + state.combo) * 10;
+            state.currentTime += 0.5;
+            state.nextNum++;
+            state.lastTapTime = Date.now();
+            
+            // Visuals
+            playSnd('hit');
+            triggerBearAnim();
+            renderScore(state.score);
+            slot.classList.add('vanished'); // 隱藏卡片
+            
+            const rect = slot.getBoundingClientRect();
+            // 注意：因為有 scale，需要換算回 720x1280 的座標系，這裡簡化直接用 slot 的 style
+            const lx = parseInt(slot.style.left);
+            const ly = parseInt(slot.style.top);
+            
+            spawnHitEffect(lx, ly, state.combo);
+            spawnStars(lx, ly);
+
+            // Combo Bar 更新
+            let windowTime = (state.combo > 50) ? 500 : 1000;
+            
+            // Check Round Clear
+            if (targetVal === state.startNumInRound + 8) {
+                state.rounds++;
+                state.startNumInRound += 9;
+                state.nextNum = state.startNumInRound;
+                
+                // Heal Logic
+                if (state.rounds % 5 === 0 && state.lives < 3) {
+                    state.lives++;
+                    updateLivesUI();
+                    playSnd('heal');
+                }
+                setTimeout(initRound, 100);
+            }
+
+        } else {
+            // Fail
+            playSnd('error');
+            slot.classList.add('wrong-shake');
+            setTimeout(() => slot.classList.remove('wrong-shake'), 400);
+            
+            state.combo = 0;
+            state.lives--;
+            state.currentTime -= 2.0;
+            updateLivesUI();
+            
+            if (state.lives <= 0) endGame();
+        }
+    }
+
+    function updateLivesUI() {
+        for(let i=1; i<=3; i++) {
+            document.getElementById(`ui-heart-${i}`).style.opacity = (i <= state.lives) ? "1" : "0.2";
+        }
+    }
+
+    function startGame() {
+        state.isPlaying = true;
+        state.score = 0;
+        state.lives = 3;
+        state.currentTime = 10.0;
+        state.combo = 0;
+        state.rounds = 0;
+        state.nextNum = 1;
+        state.startNumInRound = 1;
+        
+        updateLivesUI();
+        renderScore(0);
+        initRound();
+        
+        // Game Loop
+        let lastTime = Date.now();
+        state.loop = setInterval(() => {
+            const now = Date.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+            
+            state.currentTime -= dt;
+            if (state.currentTime <= 0) {
+                state.currentTime = 0;
+                endGame();
+            }
+            renderTimer(state.currentTime);
+            
+            // Combo Bar Logic
+            if (state.combo > 0) {
+                let windowTime = (state.combo > 50) ? 0.5 : 1.0; // 秒
+                let elapsed = (now - state.lastTapTime) / 1000;
+                let ratio = Math.max(0, 1 - (elapsed / windowTime));
+                document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${ratio})`;
+                
+                if (ratio <= 0) state.combo = 0;
+            } else {
+                 document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(0)`;
+            }
+
+        }, 50); // 20FPS update logic
+    }
+
+    function endGame() {
+        state.isPlaying = false;
+        clearInterval(state.loop);
+        toggleBGM(false);
+        
+        // Show Result or Input Name
+        if (!playerName) {
+            document.getElementById('ui-input-screen').style.display = 'block';
+        } else {
+            showResultScreen();
+        }
+    }
+
+    // --- 5. UI 流程控制 ---
+
+    async function startCountdownSequence() {
+        document.getElementById('ui-home-screen').style.display = 'none';
+        document.getElementById('ui-result-screen').style.display = 'none';
+        
+        const seq = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
+        for (let id of seq) {
+            const el = document.getElementById(id);
+            el.style.display = 'block';
+            el.classList.add('anim-pop');
+            playSnd('hit'); // Count sound
+            await new Promise(r => setTimeout(r, 600));
+            el.style.display = 'none';
+            el.classList.remove('anim-pop');
+        }
+        
+        startGame();
+        toggleBGM(true);
+    }
+
+    // 按鈕綁定
+    function setupBtn(id, callback) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            el.classList.add('btn-pressed');
+        });
+        el.addEventListener('touchend', () => {
+            el.classList.remove('btn-pressed');
+            callback();
+        });
+        el.addEventListener('mousedown', () => el.classList.add('btn-pressed'));
+        el.addEventListener('mouseup', () => {
+            el.classList.remove('btn-pressed');
+            callback();
+        });
+    }
+
+    setupBtn('btn-start', () => { initAudio(); startCountdownSequence(); });
+    setupBtn('res-btn-retry', () => { startCountdownSequence(); });
+    setupBtn('btn-confirm-name', () => {
+        const val = document.getElementById('ui-input-field').value.trim();
+        if(val) {
+            playerName = val.substring(0,8);
+            localStorage.setItem('pixelJD_Player', playerName);
+            document.getElementById('ui-input-screen').style.display = 'none';
+            showResultScreen();
+        }
+    });
+
+    // Grid 點擊綁定
+    document.querySelectorAll('.card-slot').forEach((slot, index) => {
+        const h = (e) => {
+            e.preventDefault(); // 防止雙擊縮放
+            slot.classList.add('pressed');
+            handleTap(index);
+            setTimeout(() => slot.classList.remove('pressed'), 100);
+        };
+        slot.addEventListener('touchstart', h, {passive: false});
+        slot.addEventListener('mousedown', h);
+    });
+
+    // --- 6. 排行榜 (Firebase) ---
+    async function showResultScreen() {
+        document.getElementById('ui-result-screen').style.display = 'block';
+        document.getElementById('my-rank-name').innerText = playerName;
+        
+        // Upload Score
+        if (playerName) {
+            const ref = doc(db, "leaderboard", playerName);
+            try {
+                const snap = await getDoc(ref);
+                if (!snap.exists() || state.score > snap.data().score) {
+                    await setDoc(ref, { name: playerName, score: state.score, rounds: state.rounds, ts: Date.now() });
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // Render My Score
+        const myScoreCon = document.getElementById('my-rank-score-container');
+        myScoreCon.innerHTML = '';
+        state.score.toString().padStart(8, '0').split('').forEach(c => {
+             const img = document.createElement('img');
+             img.src = `assets/num_grid_${c}.webp`;
+             img.className = 'rank-score-digit';
+             myScoreCon.appendChild(img);
+        });
+    }
+
+    // 監聽排行榜
+    const q = query(scoresCol, orderBy("score", "desc"), limit(50));
+    onSnapshot(q, (snapshot) => {
         const list = document.getElementById('rank-scroll-view');
         if(!list) return;
-        list.innerHTML = ''; 
-        const flags = ['🇹🇼', '🇯🇵', '🇺🇸', '🇰🇷', '🇨🇦', '🇬🇧', '🇦🇺', '🇫🇷', '🇩🇪', '🇹🇭'];
-        for(let i=1; i<=100; i++) {
+        list.innerHTML = '';
+        let i = 1;
+        snapshot.forEach(doc => {
+            const data = doc.data();
             const row = document.createElement('div');
             row.className = 'rank-row';
-            const rankStr = i;
-            let nameRaw = `Player${i}`;
-            let scoreRaw = 99999 - i * 100;
-            const flagEmoji = flags[i % flags.length];
-            let rankFontSize = i >= 10000 ? '26px' : (i >= 1000 ? '32px' : '40px'); 
+            
+            // 建立分數圖片 HTML
+            let scoreHtml = '';
+            (data.score||0).toString().padStart(8,'0').split('').forEach(c => {
+                scoreHtml += `<img src="assets/num_grid_${c}.webp" class="rank-score-digit">`;
+            });
+
             row.innerHTML = `
-                <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
-                <span class="rank-name">${nameRaw}</span>
-                <span class="rank-flag">${flagEmoji}</span>
-                <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
+                <span class="rank-num">${i}</span>
+                <span class="rank-name">${data.name}</span>
+                <span class="rank-flag">🇹🇼</span>
+                <div class="rank-score">${scoreHtml}</div>
             `;
             list.appendChild(row);
-        }
-    }
+            i++;
+        });
+    });
 
-    function testDigits(d) {
-        const val = Math.pow(10, d) - 1;
-        cardSlots.forEach((_, i) => setGridNumber(i, val));
-    }
-    function testHP(hp) {
-        for (let i = 1; i <= 3; i++) document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
-    }
-    function testBar(val) {
-        comboBarFill.style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
-    }
 </script>
 </body>
 </html>
