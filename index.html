@@ -399,25 +399,44 @@
     <button class="debug-btn" style="width:100%; background:#c62828;" onclick="this.parentElement.style.display='none'">隱藏面板</button>
 </div>
 
+ 
 <script type="module">
-    // --- 第一步驟：在此處貼上全域音效工具 ---
-    let audioCtx = null; // 音效環境變數
+    // 1. 引入 Firebase (只寫這一次，放在最上面)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, setDoc, doc, serverTimestamp, getCountFromServer } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // 核心音效函式 f:頻率(Hz), t:波形類型, d:持續時間(秒)
-  function playSnd(f, t, d) {
-    // 如果音效環境不存在或未啟動，就直接跳出，避免程式報錯
-       if (!audioCtx || audioCtx.state !== 'running') return;
-    
+    // 2. Firebase 設定
+    const firebaseConfig = {
+        apiKey: "AIzaSyAj4XgNOpRKzBlX1cANoDVtHd89HP0Q5HQ",
+        authDomain: "pixel-jd-games-hub.firebaseapp.com",
+        projectId: "pixel-jd-games-hub",
+        storageBucket: "pixel-jd-games-hub.firebasestorage.app",
+        messagingSenderId: "672178239988",
+        appId: "1:672178239988:web:6a49431cdc1bb9f066e1a1",
+        measurementId: "G-FLYGZGG3ZS"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const GAME_ID = "bear_flash_tap";
+
+    // --- 全域音效工具 ---
+    let audioCtx = null; 
+
+    function playSnd(f, t, d) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
         const o = audioCtx.createOscillator();
         const g = audioCtx.createGain();
         o.type = t; 
         o.frequency.setValueAtTime(f, audioCtx.currentTime);
         g.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d); // 自動淡出
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d); 
         o.connect(g); g.connect(audioCtx.destination);
         o.start(); o.stop(audioCtx.currentTime + d);
     }
-    // ------------------------------------
+
+    // --- 遊戲變數 ---
     let gameTimer = null;
     let timeLeft = 1000;
     let comboCount = 0;
@@ -425,82 +444,50 @@
     let playerName = "YOU"; 
     let lastInputTime = 0;
     const INPUT_COOLDOWN = 60; 
-// --- 新增：連擊與分數核心變數 ---
-    let lastHitTime = 0;      // 紀錄上一次正確點擊的絕對時間
-    let comboTimerReq = null; // 用於控制連擊條動畫
+    let lastHitTime = 0;      
+    let comboTimerReq = null; 
 
-    // 核心：連擊級距得分計算 (依照你提供的級距表)
+    // --- 輔助函式 ---
     function calculateStepScore(combo) {
-    const baseScore = 10; // 基礎分維持 10
-    let bonus = 0;
-    let multiplier = 1;
-
-    if (combo === 0) {
-        bonus = 0;
-    } else if (combo <= 100) {
-        // 原本是 1 + ... 改成 10 + ...
-        bonus = 10 + Math.floor(combo / 10) * 10; 
-    } else if (combo <= 300) {
-        // 原本基數 22 改成 220，後方加成也 * 10
-        bonus = 220 + Math.floor((combo - 100) / 50) * 20;
-    } else if (combo <= 600) {
-        // 原本基數 35 改成 350
-        bonus = 350 + Math.floor((combo - 300) / 100) * 50;
-    } else if (combo <= 1000) {
-        bonus = 600 + Math.floor((combo - 600) / 200) * 100;
-    } else if (combo <= 2000) {
-        bonus = 1000 + Math.floor((combo - 1000) / 250) * 200;
-    } else if (combo <= 3000) {
-        bonus = 2300 + Math.floor((combo - 2000) / 500) * 500;
-    } else if (combo <= 4000) {
-        bonus = 4300 + Math.floor((combo - 3000) / 500) * 1000;
-    } else if (combo <= 5000) {
-        bonus = 8300 + Math.floor((combo - 4000) / 500) * 2000;
-    } else {
-        // 5000+ 極限模式：原本 2060 改成 20600
-        bonus = 20600; 
-        multiplier = 2; 
+        const baseScore = 10; 
+        let bonus = 0;
+        let multiplier = 1;
+        if (combo === 0) bonus = 0;
+        else if (combo <= 100) bonus = 10 + Math.floor(combo / 10) * 10; 
+        else if (combo <= 300) bonus = 220 + Math.floor((combo - 100) / 50) * 20;
+        else if (combo <= 600) bonus = 350 + Math.floor((combo - 300) / 100) * 50;
+        else if (combo <= 1000) bonus = 600 + Math.floor((combo - 600) / 200) * 100;
+        else if (combo <= 2000) bonus = 1000 + Math.floor((combo - 1000) / 250) * 200;
+        else if (combo <= 3000) bonus = 2300 + Math.floor((combo - 2000) / 500) * 500;
+        else if (combo <= 4000) bonus = 4300 + Math.floor((combo - 3000) / 500) * 1000;
+        else if (combo <= 5000) bonus = 8300 + Math.floor((combo - 4000) / 500) * 2000;
+        else { bonus = 20600; multiplier = 2; }
+        return (baseScore + bonus) * multiplier;
     }
-    
-    // 最終計算：(10 + 20600) * 2 = 41220 分！
-    return (baseScore + bonus) * multiplier;
-}
 
-    // 核心：取得當前 Combo 對應的窗口時間 (ms)
     function getComboWindow(combo) {
         if (combo <= 100) return 1000;
         if (combo <= 300) return 800;
         if (combo <= 600) return 500;
-        return 300; // 601+ 以上只有 0.3 秒
+        return 300; 
     }
 
-// --- 貼在這裡：實時倒退連擊條邏輯 ---
     function updateComboBar() {
         if (!state.isPlaying || comboCount === 0) {
             document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(0)`;
             return;
         }
-
         const now = Date.now();
         const windowTime = getComboWindow(comboCount);
         const elapsed = now - lastHitTime;
         let remainRatio = (windowTime - elapsed) / windowTime;
-
-        if (remainRatio <= 0) {
-            remainRatio = 0;
-            // 這裡讓條子停在 0，實質的 combo 重置交給 handleCardTap 判定
-        }
-
-        // 效能優化：使用 transform 代替 width
+        if (remainRatio <= 0) remainRatio = 0;
         document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${remainRatio})`;
-
         if (state.isPlaying && remainRatio > 0) {
             comboTimerReq = requestAnimationFrame(updateComboBar);
         }
     }
-    // ---------------------------------
 
-    // 遊戲狀態
     let state = {
         isPlaying: false,
         isPaused: false,
@@ -527,15 +514,14 @@
     window.addEventListener('load', () => {
         resizeGame();
         preloadGameAssets();
-        // 綁定按鍵特效與換數字邏輯 (但現在數字由遊戲邏輯控制)
         document.querySelectorAll('.card-slot').forEach((slot, i) => {
             setupButtonFeedback(slot, true, i); 
         });
         updateScoreDisplay(0); 
-        initLeaderboard(); 
+        if(window.initLeaderboard) window.initLeaderboard(); 
         
         document.getElementById('ui-input-field').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') submitName();
+            if (e.key === 'Enter') window.submitName();
         });
     });
 
@@ -562,24 +548,14 @@
         bear.classList.remove('effect-sink', 'effect-shake');
         devil.style.display = 'none';
         devil.classList.remove('effect-rise');
-        
-        // 確保重新開始時愛心是滿的
-        testHP(3); 
-        
-        // 隱藏所有結束相關的文字與介面
+        if(window.testHP) window.testHP(3); 
         document.getElementById('ui-text-gameover').classList.remove('anim-pop-end');
         document.getElementById('ui-text-timeup').classList.remove('anim-pop-end');
-        
-        // 隱藏所有圖層，確保直接進入倒數畫面
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none'; 
         document.getElementById('ui-input-screen').style.display = 'none';
-        
-        // 分數與計時器立刻歸零
         updateScoreDisplay(0);
         updateTimerDisplay(1000);
-        
-        // --- 強制大掃除：清空九宮格數字並恢復透明度，防止上一場殘影 ---
         document.querySelectorAll('.card-slot').forEach(slot => {
             slot.style.opacity = '1'; 
             const wrapper = slot.querySelector('.num-wrapper');
@@ -587,67 +563,40 @@
         });
     }
 
+    // 🌟 全域掛載 StartGame
     window.startGameProcess = function() {
-        // --- 修正後的音效環境初始化 ---
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        // iOS 關鍵：如果音效環境被掛起，必須手動恢復
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        // ----------------------------
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        // 播放背景音樂
         const bgm = document.getElementById('bgm-main');
-        if (bgm) {
-            bgm.volume = 0.5;
-            bgm.play().catch(e => console.log("手機音樂撥放受限:", e));
-        }
+        if (bgm) { bgm.volume = 0.5; bgm.play().catch(e => console.log("Music blocked:", e)); }
 
         resetGameUI();
-        state = {
-            isPlaying: false,
-            isPaused: false,
-            hearts: 3,
-            round: 1,
-            currentTarget: 1,
-            maxTargetInWave: 9,
-            numbersOnGrid: []
-        };
+        state = { isPlaying: false, isPaused: false, hearts: 3, round: 1, currentTarget: 1, maxTargetInWave: 9, numbersOnGrid: [] };
         currentScore = 0;
         
         const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
         let delay = 0;
         ids.forEach(id => {
             const el = document.getElementById(id);
-            el.style.display = 'none';
-            el.classList.remove('anim-pop');
+            el.style.display = 'none'; el.classList.remove('anim-pop');
         });
 
         ids.forEach((id, index) => {
             setTimeout(() => {
                 if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
                 const el = document.getElementById(id);
-                el.style.display = 'block';
-                el.classList.add('anim-pop');
-
-                // 🌟 加入倒數音效邏輯
+                el.style.display = 'block'; el.classList.add('anim-pop');
                 if (id === 'ui-text-go') {
-                    // GO! 出現時播放高音噹！
                     playSnd(880, 'sine', 0.3); 
-                    setTimeout(() => { 
-                        el.style.display = 'none'; 
-                        startGameLoop(); 
-                    }, 500);
+                    setTimeout(() => { el.style.display = 'none'; startGameLoop(); }, 500);
                 } else {
-                    // 3, 2, 1 出現時播放短促嗶聲
                     playSnd(440, 'sine', 0.1);
                 }
             }, delay);
-            delay += 800; // 每 0.8 秒切換一次數字
+            delay += 800;
         });
-    }
+    };
 
     function startGameLoop() {
         state.isPlaying = true;
@@ -656,19 +605,12 @@
         updateScoreDisplay(0);
         updateTimerDisplay(timeLeft);
         spawnWave();
-        
-        // --- 修正點：初始化第一次點擊的參考時間 ---
         lastHitTime = Date.now(); 
-        // -----------------------------------
-
         if (gameTimer) clearInterval(gameTimer);
         gameTimer = setInterval(() => {
             if (!state.isPlaying || state.isPaused) return;
             timeLeft--;
-            if (timeLeft <= 0) {
-                timeLeft = 0;
-                gameOver('time');
-            }
+            if (timeLeft <= 0) { timeLeft = 0; gameOver('time'); }
             updateTimerDisplay(timeLeft);
         }, 10);
     }
@@ -677,135 +619,101 @@
         const startNum = state.round;
         state.currentTarget = startNum;
         state.maxTargetInWave = startNum + 8;
-        
         let nums = [];
         for(let i=0; i<9; i++) nums.push(startNum + i);
-        // 洗牌
         for (let i = nums.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [nums[i], nums[j]] = [nums[j], nums[i]];
         }
         state.numbersOnGrid = nums;
-
         const slots = document.querySelectorAll('.card-slot');
         slots.forEach((slot, i) => {
-            slot.style.display = 'block';
-            slot.style.opacity = '1';
+            slot.style.display = 'block'; slot.style.opacity = '1';
             setGridNumber(i, nums[i]);
         });
     }
 
- function handleCardTap(index) {
-    if (!state.isPlaying || state.isPaused) return;
+    function handleCardTap(index) {
+        if (!state.isPlaying || state.isPaused) return;
+        const clickedNum = state.numbersOnGrid[index];
+        const slot = document.querySelectorAll('.card-slot')[index];
+        if (slot.style.opacity === '0') return;
 
-    const clickedNum = state.numbersOnGrid[index];
-    const slot = document.querySelectorAll('.card-slot')[index];
+        if (clickedNum === state.currentTarget) {
+            const now = Date.now();
+            const windowTime = getComboWindow(comboCount);
+            if (comboCount > 0 && (now - lastHitTime) > windowTime) comboCount = 1;
+            else comboCount++; 
+            lastHitTime = now;
 
-    // 防止重複點擊已經隱藏的卡片
-    if (slot.style.opacity === '0') return;
+            const scoreThisHit = calculateStepScore(comboCount);
+            currentScore += scoreThisHit;
+            updateScoreDisplay(currentScore);
 
-    if (clickedNum === state.currentTarget) {
-        const now = Date.now();
-        const windowTime = getComboWindow(comboCount);
+            const cx = parseInt(slot.style.left); const cy = parseInt(slot.style.top);
+            createStarBurst(cx, cy); createHitEffect(cx, cy, comboCount);
+            handleBearHit(); 
 
-        // --- 1. 連擊判定邏輯 ---
-        if (comboCount > 0 && (now - lastHitTime) > windowTime) {
-            comboCount = 1; // 點對但超時，重置連擊
-        } else {
-            comboCount++;   // 點對且準時，連擊增加
-        }
-        lastHitTime = now;
+            const freq = 800 + (Math.min(comboCount, 200) * 5);
+            playSnd(freq, 'sine', 0.1);
+            timeLeft += 50; 
+            slot.style.opacity = '0';
+            state.currentTarget++;
+            cancelAnimationFrame(comboTimerReq);
+            updateComboBar();
 
-        // --- 2. 全動態分數計算 ---
-        const scoreThisHit = calculateStepScore(comboCount);
-        currentScore += scoreThisHit;
-        updateScoreDisplay(currentScore);
-
-        // --- 3. 視覺與音效回饋 ---
-        const cx = parseInt(slot.style.left);
-        const cy = parseInt(slot.style.top);
-        createStarBurst(cx, cy);
-        createHitEffect(cx, cy, comboCount);
-        
-        // 🌟【新增】點擊正確時，熊熊抖動反饋
-        handleBearHit(); 
-
-        const freq = 800 + (Math.min(comboCount, 200) * 5);
-        playSnd(freq, 'sine', 0.1);
-
-        timeLeft += 50; // 時間獎勵 +0.5s
-        slot.style.opacity = '0';
-        state.currentTarget++;
-
-        // --- 4. 啟動連擊條倒退動畫 ---
-        cancelAnimationFrame(comboTimerReq);
-        updateComboBar();
-
-        // --- 5. 判定過關與回血邏輯 ---
-        if (state.currentTarget > state.maxTargetInWave) {
-            if (state.round % 5 === 0 && state.hearts < 3) {
-                state.hearts++;
-                testHP(state.hearts);
-                playSnd(1200, 'sine', 0.3);
-                createHealEffect();
+            if (state.currentTarget > state.maxTargetInWave) {
+                if (state.round % 5 === 0 && state.hearts < 3) {
+                    state.hearts++;
+                    if(window.testHP) window.testHP(state.hearts);
+                    playSnd(1200, 'sine', 0.3); createHealEffect();
+                }
+                state.round++;
+                setTimeout(spawnWave, 200);
             }
-            state.round++;
-            setTimeout(spawnWave, 200);
-        }
-    } else {
-        // --- 6. 點錯懲罰邏輯 ---
-        state.hearts--;
-        timeLeft -= 100; // 時間懲罰 -1.0s
-        comboCount = 0;
-        lastHitTime = 0;
-        
-        playSnd(150, 'sawtooth', 0.2);
-        testHP(state.hearts);
-        
-        // ❌【移除】這裡原本的 handleBearHit() 已經刪除了
-
-        slot.classList.add('wrong-flash-card');
-        setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
-
-        if (state.hearts <= 0) {
-            gameOver('hearts');
+        } else {
+            state.hearts--;
+            timeLeft -= 100; comboCount = 0; lastHitTime = 0;
+            playSnd(150, 'sawtooth', 0.2);
+            if(window.testHP) window.testHP(state.hearts);
+            slot.classList.add('wrong-flash-card');
+            setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
+            if (state.hearts <= 0) gameOver('hearts');
         }
     }
-}
 
+    // 🌟 修正版 GameOver：自動登入 + ID 檢查
     function gameOver(reason) {
-        // 1. 停止背景音樂並重設進度
         const bgm = document.getElementById('bgm-main');
-        if (bgm) {
-            bgm.pause();
-            bgm.currentTime = 0; 
-        }
-
-        // 2. 停止遊戲邏輯與計時器
+        if (bgm) { bgm.pause(); bgm.currentTime = 0; }
         state.isPlaying = false;
-        stopGameTimer();
-        triggerBearDeath();
+        if(window.stopGameTimer) window.stopGameTimer();
+        if(window.triggerBearDeath) window.triggerBearDeath();
 
-        // 🌟 3. [新增] 觸發 Firebase 雲端上傳
-        // 使用你目前的 playerName (預設為 YOU 或輸入的名字) 與 currentScore
-        if (window.uploadScore) {
-            console.log(`🎮 遊戲結束(${reason})，正在準備上傳成績...`);
-            window.uploadScore(playerName, currentScore);
-        }
+        // 核心動作：檢查手機是否已經有身分證 (ID)
+        const savedId = localStorage.getItem('pixel_jd_player_id');
+        const savedName = localStorage.getItem('pixel_jd_player_name');
         
-        // 4. 顯示結束文字動畫 (維持原本邏輯)
-        setTimeout(() => {
-            if (reason === 'time') {
-                document.getElementById('ui-text-timeup').classList.add('anim-pop-end');
-            } else {
-                document.getElementById('ui-text-gameover').classList.add('anim-pop-end');
-            }
-        }, 800);
+        if (savedId && savedName) {
+            // A. 老玩家：直接上傳並看排行
+            playerName = savedName; 
+            if (window.uploadScore) window.uploadScore(playerName, currentScore);
 
-        // 5. 進入輸入暱稱或結算畫面 (維持原本邏輯)
+            setTimeout(() => {
+                if(window.showResultScreen) window.showResultScreen();
+                if(window.initLeaderboard) window.initLeaderboard();
+            }, 2800);
+        } else {
+            // B. 新玩家：跳出輸入名字畫面
+            setTimeout(() => {
+                if(window.showInputScreen) window.showInputScreen();
+            }, 2800);
+        }
+
         setTimeout(() => {
-            showInputScreen();
-        }, 2800); 
+            const elId = (reason === 'time') ? 'ui-text-timeup' : 'ui-text-gameover';
+            document.getElementById(elId).classList.add('anim-pop-end');
+        }, 800);
     }
 
     function setGridNumber(index, number) {
@@ -813,20 +721,14 @@
         if (!slots[index]) return;
         const wrapper = slots[index].querySelector('.num-wrapper');
         const numStr = number.toString();
-        
         wrapper.innerHTML = '';
-        
         for (let char of numStr) {
             const img = document.createElement('img');
             img.src = `assets/num_grid_${char}.webp`;
             wrapper.appendChild(img);
         }
-
-        // [安全機制]
         let scaleValue = 1.0;
-        if (numStr.length >= 4) {
-            scaleValue = 0.6; 
-        }
+        if (numStr.length >= 4) scaleValue = 0.6; 
         wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
     }
 
@@ -834,16 +736,14 @@
         const container = document.getElementById('game-container');
         for (let i = 0; i < 5; i++) {
             const star = document.createElement('img');
-            star.src = 'assets/icon_star.webp';
-            star.className = 'particle-star';
+            star.src = 'assets/icon_star.webp'; star.className = 'particle-star';
             const size = Math.random() * 40 + 60; 
             star.style.width = `${size}px`; star.style.height = `${size}px`;
             star.style.left = `${x}px`; star.style.top = `${y}px`;
             star.style.transform = `translate(-50%, -50%) scale(0.5)`;
             const angle = Math.random() * Math.PI * 2; 
             const velocity = Math.random() * 150 + 100; 
-            const tx = Math.cos(angle) * velocity;
-            const ty = Math.sin(angle) * velocity;
+            const tx = Math.cos(angle) * velocity; const ty = Math.sin(angle) * velocity;
             const rot = Math.random() * 720; 
             container.appendChild(star);
             requestAnimationFrame(() => {
@@ -853,44 +753,35 @@
             setTimeout(() => star.remove(), 800);
         }
     }
-    // --- 補上這個功能定義，特效才會跑出來 ---
+
     function createHealEffect() {
         const container = document.getElementById('game-container');
         const heart = document.createElement('img');
         heart.src = 'assets/icon_heart.webp';
-        heart.style.position = 'absolute';
-        heart.style.width = '60px';
-        heart.style.height = 'auto';
-        heart.style.zIndex = '999';
-        heart.style.left = '360px'; // 畫面中心
-        heart.style.top = '460px';  // 熊熊位置
+        heart.style.position = 'absolute'; heart.style.width = '60px'; heart.style.height = 'auto'; heart.style.zIndex = '999';
+        heart.style.left = '360px'; heart.style.top = '460px'; 
         heart.style.transform = 'translate(-50%, -50%) scale(0.5)';
         heart.style.transition = 'transform 1s ease-out, opacity 1s ease-out, top 1s ease-out';
         container.appendChild(heart);
-
         requestAnimationFrame(() => {
-            heart.style.top = '260px';
-            heart.style.transform = 'translate(-50%, -50%) scale(1.5)';
-            heart.style.opacity = '0';
+            heart.style.top = '260px'; heart.style.transform = 'translate(-50%, -50%) scale(1.5)'; heart.style.opacity = '0';
         });
         setTimeout(() => heart.remove(), 1000);
     }
+
     function createHitEffect(x, y, comboVal) {
         const container = document.getElementById('game-container');
         const wrapper = document.createElement('div');
         wrapper.className = 'hit-effect-wrapper';
-        wrapper.style.left = `${x}px`;
-        wrapper.style.top = `${y - 50}px`; 
+        wrapper.style.left = `${x}px`; wrapper.style.top = `${y - 50}px`; 
         const valStr = comboVal.toString();
         for (let char of valStr) {
             const digit = document.createElement('img');
-            digit.src = `assets/num_ui_${char}.webp`;
-            digit.className = 'hit-num-digit';
+            digit.src = `assets/num_ui_${char}.webp`; digit.className = 'hit-num-digit';
             wrapper.appendChild(digit);
         }
         const hitImg = document.createElement('img');
-        hitImg.src = 'assets/ui_text_hit.webp';
-        hitImg.className = 'hit-text-img';
+        hitImg.src = 'assets/ui_text_hit.webp'; hitImg.className = 'hit-text-img';
         wrapper.appendChild(hitImg);
         container.appendChild(wrapper);
         setTimeout(() => wrapper.remove(), 1500); 
@@ -899,80 +790,19 @@
     function updateScoreDisplay(newScore) {
         const scoreContainer = document.getElementById('ui-game-score');
         scoreContainer.innerHTML = ''; 
-        
-        // --- 修正：刪除 .padStart(8, '0')，讓它只顯示實際位數 ---
         const scoreStr = newScore.toString(); 
-        
         for (let char of scoreStr) {
             const img = document.createElement('img');
-            img.src = `assets/num_grid_${char}.webp`;
-            img.className = 'score-digit-img';
+            img.src = `assets/num_grid_${char}.webp`; img.className = 'score-digit-img';
             scoreContainer.appendChild(img);
         }
     }
 
     function getScoreHtml(score) {
-        // --- 修正：同樣刪除 .padStart(8, '0') ---
         const str = score.toString(); 
         let html = '';
-        for(let char of str) {
-            html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
-        }
+        for(let char of str) html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
         return html;
-    }
-
-    // 🌟 修正版：從雲端抓取真實排行榜 (替換原本的假資料迴圈)
-    async function initLeaderboard() {
-        const list = document.getElementById('rank-scroll-view');
-        if(!list) return;
-
-        // 1. 先顯示 LOADING 提示，讓玩家知道正在連線雲端
-        list.innerHTML = '<div style="color:white; text-align:center; padding-top:50px; font-size:24px; font-family:sans-serif;">LOADING RANK...</div>';
-
-        try {
-            // 2. 呼叫我們定義好的 Firebase 讀取功能 (抓取前 10 名)
-            const realData = await window.getLeaderboard();
-            
-            // 3. 清空容器，準備放入真資料
-            list.innerHTML = ''; 
-
-            if (!realData || realData.length === 0) {
-                list.innerHTML = '<div style="color:gray; text-align:center; padding-top:50px; font-family:sans-serif;">目前尚無排名紀錄</div>';
-                return;
-            }
-
-            // 4. 遍歷從 Firebase 抓回來的真實數據
-            realData.forEach((data, index) => {
-                const row = document.createElement('div');
-                row.className = 'rank-row';
-                
-                const rankNum = index + 1;
-                const nameStr = (data.name || "Unknown").substring(0, 8);
-                const scoreRaw = data.score || 0;
-                
-                row.innerHTML = `
-                    <span class="rank-num">${rankNum}</span>
-                    <span class="rank-name">${nameStr}</span>
-                    <span class="rank-flag">🇹🇼</span>
-                    <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
-                `;
-                list.appendChild(row);
-            });
-
-            // 5. 更新最下方「固定顯示自己分數」的區塊
-            const myScoreContainer = document.getElementById('my-rank-score-container');
-            if(myScoreContainer) {
-                myScoreContainer.innerHTML = getScoreHtml(currentScore);
-            }
-            
-            // 同步更新自己的暱稱顯示
-            const myNameEl = document.getElementById('my-rank-name');
-            if(myNameEl) myNameEl.textContent = playerName;
-
-        } catch (error) {
-            console.error("排行榜初始化失敗:", error);
-            list.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;">連線失敗</div>';
-        }
     }
 
     function handleBearHit() {
@@ -982,20 +812,7 @@
         activeBear.classList.remove('effect-shake');
         void activeBear.offsetWidth; 
         activeBear.classList.add('effect-shake');
-        setTimeout(() => {
-            activeBear.classList.remove('effect-shake');
-        }, 200);
-    }
-
-    function triggerBearDeath() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        bearNormal.classList.add('effect-sink');
-        setTimeout(() => {
-            bearNormal.style.display = 'none'; 
-            bearDevil.style.display = 'block'; 
-            bearDevil.classList.add('effect-rise');
-        }, 1000); 
+        setTimeout(() => activeBear.classList.remove('effect-shake'), 200);
     }
 
     function setupButtonFeedback(element, isCard = false, index = -1) {
@@ -1007,9 +824,7 @@
             lastInputTime = now;
             element.classList.add(pressClass);
             element.setPointerCapture(e.pointerId);
-            if (isCard && state.isPlaying) {
-                handleCardTap(index);
-            }
+            if (isCard && state.isPlaying) handleCardTap(index);
         });
         const release = () => { element.classList.remove(pressClass); };
         element.addEventListener('pointerup', release);
@@ -1026,71 +841,72 @@
     setupButtonFeedback(document.getElementById('res-btn-share'));
     setupButtonFeedback(document.getElementById('btn-confirm-name'));
 
-    // --- 📥 遊戲分享功能專區 (隔離開發，不影響遊戲邏輯) ---
     async function doShare() {
         try {
-            // 自動抓取遊戲數據： rounds (輪數), currentScore (總分)
             const rounds = (typeof state !== 'undefined') ? state.round : 0;
             const score = (typeof currentScore !== 'undefined') ? currentScore : 0;
-            
             const shareText = `🐻【熊熊閃電手】挑戰成功！\n我拿到了 ${rounds} 輪，總計 ★${score} 分！\n👉 ${window.location.href}`;
             const isLine = /Line/i.test(navigator.userAgent);
-
-            // 優先嘗試系統原生分享
-            if (navigator.share && !isLine) {
-                await navigator.share({ title: '熊熊閃電手', text: shareText, url: window.location.href });
-            } else {
-                // LINE 或 PC 環境跳轉
-                window.open(`https://line.me/R/share?text=${encodeURIComponent(shareText)}`, '_blank');
-            }
-        } catch (err) {
-            console.log("分享已取消或環境不支援");
-        }
+            if (navigator.share && !isLine) await navigator.share({ title: '熊熊閃電手', text: shareText, url: window.location.href });
+            else window.open(`https://line.me/R/share?text=${encodeURIComponent(shareText)}`, '_blank');
+        } catch (err) { console.log("Share canceled"); }
     }
-
-    // 強制綁定點擊事件，不依賴 setupButtonFeedback 的內建邏輯
     const shareBtn1 = document.getElementById('btn-share');
     const shareBtn2 = document.getElementById('res-btn-share');
-    
     if (shareBtn1) shareBtn1.onclick = (e) => { e.preventDefault(); doShare(); };
     if (shareBtn2) shareBtn2.onclick = (e) => { e.preventDefault(); doShare(); };
-    function showInputScreen() {
+
+    // --- 關鍵全域函式 (解決 ReferenceError) ---
+    
+    window.showInputScreen = function() {
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none';
         document.getElementById('ui-input-screen').style.display = 'block';
         document.getElementById('ui-input-field').focus();
-    }
+    };
 
-    window.submitName = function() {
-    const inputVal = document.getElementById('ui-input-field').value.trim();
-        if (inputVal) {
-            playerName = inputVal.substring(0, 8); 
-        }
-        document.getElementById('ui-input-screen').style.display = 'none';
-        showResultScreen();
-    }
-
-    function showResultScreen() {
+    window.showResultScreen = function() {
         document.getElementById('ui-result-screen').style.display = 'block';
-        
         const nameEl = document.getElementById('my-rank-name');
         if(nameEl) nameEl.textContent = playerName;
-
         const myScoreContainer = document.getElementById('my-rank-score-container');
-        if(myScoreContainer) {
-            myScoreContainer.innerHTML = getScoreHtml(currentScore);
+        if(myScoreContainer) myScoreContainer.innerHTML = getScoreHtml(currentScore);
+    };
+
+    window.triggerBearDeath = function() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        bearNormal.classList.add('effect-sink');
+        setTimeout(() => {
+            bearNormal.style.display = 'none'; 
+            bearDevil.style.display = 'block'; 
+            bearDevil.classList.add('effect-rise');
+        }, 1000); 
+    };
+
+    window.stopGameTimer = function() {
+        if (gameTimer) clearInterval(gameTimer);
+    };
+
+    window.testDigits = function(d) {
+        const val = Math.pow(10, d) - 1;
+        document.querySelectorAll('.card-slot').forEach((_, i) => setGridNumber(i, val));
+    };
+
+    window.testHP = function(hp) {
+        for (let i = 1; i <= 3; i++) {
+            document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
         }
-    }
+    };
+
+    window.testBar = function(val) {
+        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
+    };
 
     function updateTimerDisplay(totalUnits) {
-   // --- 新增這段：低於 3 秒變紅跳動 ---
-    const container = document.getElementById('ui-timer-container');
-    if (totalUnits <= 300) {
-        container.classList.add('timer-danger', 'timer-pulse');
-    } else {
-        container.classList.remove('timer-danger', 'timer-pulse');
-    }
-    // ---------------------------------
+        const container = document.getElementById('ui-timer-container');
+        if (totalUnits <= 300) container.classList.add('timer-danger', 'timer-pulse');
+        else container.classList.remove('timer-danger', 'timer-pulse');
         const seconds = Math.floor(totalUnits / 100);
         const millis = totalUnits % 100;
         const sStr = seconds.toString().padStart(2, '0');
@@ -1100,97 +916,151 @@
         if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
         if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
     }
-
-    function stopGameTimer() {
-        if (gameTimer) clearInterval(gameTimer);
-    }
-
-    function testDigits(d) {
-        const val = Math.pow(10, d) - 1;
-        document.querySelectorAll('.card-slot').forEach((_, i) => setGridNumber(i, val));
-    }
-
-    function testHP(hp) {
-        for (let i = 1; i <= 3; i++) {
-            document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
-        }
-    }
-
-    function testBar(val) {
-        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
-    }
-    const fillBar = document.getElementById('ui-combo-bar-fill');
-    fillBar.addEventListener('click', () => { fillBar.style.transform = `translate(-50%, -50%) scaleX(${Math.random()})`; });
-
     updateTimerDisplay(1000);
 
-    // --- Firebase 雲端整合模組 (CDN 版本) ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, setDoc, doc, serverTimestamp } 
-    from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    // --- Firebase 核心邏輯 (防止撞名、一人一坑、真實排名) ---
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAj4XgNOpRKzBlX1cANoDVtHd89HP0Q5HQ",
-  authDomain: "pixel-jd-games-hub.firebaseapp.com",
-  projectId: "pixel-jd-games-hub",
-  storageBucket: "pixel-jd-games-hub.firebasestorage.app",
-  messagingSenderId: "672178239988",
-  appId: "1:672178239988:web:6a49431cdc1bb9f066e1a1",
-  measurementId: "G-FLYGZGG3ZS"
-};
+    // 1. 上傳分數 (ID 鎖定版)
+    window.uploadScore = async function(playerName, score) {
+        if (!playerName) playerName = "匿名玩家";
+        const playerId = localStorage.getItem('pixel_jd_player_id');
+        if (!playerId) return; 
 
-// 初始化 Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const GAME_ID = "bear_flash_tap"; // 🌟 方案 B：這是這款遊戲在資料庫的身份夾名稱
+        try {
+            const docRef = doc(db, `leaderboard_${GAME_ID}`, playerId);
+            const q = query(collection(db, `leaderboard_${GAME_ID}`), where("__name__", "==", playerId));
+            const querySnapshot = await getDocs(q);
 
-// 🌟 全域功能：上傳成績 (自動判斷最高分)
-window.uploadScore = async function(playerName, score) {
-    if (!playerName) playerName = "匿名玩家";
-    console.log(`正在為 ${playerName} 上傳分數: ${score}`);
-    
-    try {
-        const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
-        const q = query(leaderRef, where("name", "==", playerName));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const existingDoc = querySnapshot.docs[0];
-            if (score > existingDoc.data().score) {
-                await setDoc(doc(db, `leaderboard_${GAME_ID}`, existingDoc.id), {
-                    score: score,
-                    timestamp: serverTimestamp()
-                }, { merge: true });
-                console.log("🏆 破紀錄！更新分數成功");
+            if (!querySnapshot.empty) {
+                const existingData = querySnapshot.docs[0].data();
+                if (score > existingData.score) {
+                    await setDoc(docRef, { name: playerName, score: score, timestamp: serverTimestamp() }, { merge: true });
+                    console.log("🏆 破紀錄！個人最高分已更新");
+                }
             } else {
-                console.log("分數未超過個人紀錄，不更新");
+                await setDoc(docRef, { name: playerName, score: score, timestamp: serverTimestamp() });
+                console.log("✅ 新身分認證成功，成績上傳成功");
             }
-        } else {
-            await addDoc(leaderRef, {
-                name: playerName,
-                score: score,
-                timestamp: serverTimestamp()
-            });
-            console.log("✅ 首次成績上傳成功");
-        }
-    } catch (e) {
-        console.error("Firebase 上傳失敗:", e);
-    }
-};
+        } catch (e) { console.error("Firebase 上傳失敗:", e); }
+    };
 
-// 🌟 全域功能：讀取排行榜
-window.getLeaderboard = async function() {
-    try {
+    // 2. 提交名字 (防止撞名檢查)
+    window.submitName = async function() {
+        const inputField = document.getElementById('ui-input-field');
+        const inputVal = inputField.value.trim();
+        if (!inputVal) { alert("請輸入暱稱喔！"); return; }
+
+        const checkName = inputVal.substring(0, 8); 
+        const btn = document.getElementById('btn-confirm-name');
+        if(btn) { btn.style.opacity = "0.5"; btn.style.pointerEvents = "none"; }
+
+        try {
+            const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
+            const q = query(leaderRef, where("name", "==", checkName));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                alert(`「${checkName}」已經有人使用了，請換一個名字！`);
+                inputField.value = ""; 
+                if(btn) { btn.style.opacity = "1"; btn.style.pointerEvents = "auto"; }
+                return; 
+            }
+
+            // 通過檢查，產生 ID 並儲存
+            playerName = checkName;
+            const playerId = 'id_' + Math.random().toString(36).substr(2, 9) + Date.now();
+            localStorage.setItem('pixel_jd_player_name', playerName);
+            localStorage.setItem('pixel_jd_player_id', playerId);
+
+            document.getElementById('ui-input-screen').style.display = 'none';
+            if(btn) { btn.style.opacity = "1"; btn.style.pointerEvents = "auto"; }
+
+            if (window.showResultScreen) window.showResultScreen();
+            if (window.initLeaderboard) window.initLeaderboard();
+            if (window.uploadScore) window.uploadScore(playerName, currentScore);
+
+        } catch (e) {
+            console.error("檢查名字失敗:", e);
+            alert("連線檢查失敗，請稍後再試");
+            if(btn) { btn.style.opacity = "1"; btn.style.pointerEvents = "auto"; }
+        }
+    };
+
+    // 3. 讀取排行榜 + 真實排名計算
+    window.initLeaderboard = async function() {
+        const list = document.getElementById('rank-scroll-view');
+        if(!list) return;
+        list.innerHTML = '<div style="color:white; text-align:center; padding-top:50px; font-size:24px; font-family:sans-serif;">LOADING RANK...</div>';
+
+        try {
+            const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
+            
+            // 抓前 10 名
+            const qTop = query(leaderRef, orderBy("score", "desc"), limit(10));
+            const snapshot = await getDocs(qTop);
+            const realData = snapshot.docs.map(doc => doc.data());
+            
+            list.innerHTML = ''; 
+            if (realData.length === 0) {
+                list.innerHTML = '<div style="color:gray; text-align:center; padding-top:50px; font-family:sans-serif;">目前尚無排名紀錄</div>';
+            } else {
+                realData.forEach((data, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'rank-row';
+                    row.innerHTML = `
+                        <span class="rank-num">${index + 1}</span>
+                        <span class="rank-name">${(data.name || "Unknown").substring(0, 8)}</span>
+                        <span class="rank-flag">🇹🇼</span>
+                        <div class="rank-score">${getScoreHtml(data.score || 0)}</div>
+                    `;
+                    list.appendChild(row);
+                });
+            }
+
+            // 計算真實排名
+            const myId = localStorage.getItem('pixel_jd_player_id');
+            const myFixedRow = document.getElementById('rank-fixed-row');
+            
+            if (myId && myFixedRow) {
+                const myDocSnap = await getDocs(query(leaderRef, where("__name__", "==", myId)));
+                if (!myDocSnap.empty) {
+                    const myData = myDocSnap.docs[0].data();
+                    const myHighScore = myData.score;
+                    
+                    const myNameEl = document.getElementById('my-rank-name');
+                    const myScoreEl = document.getElementById('my-rank-score-container');
+                    if (myNameEl) myNameEl.textContent = myData.name;
+                    if (myScoreEl) myScoreEl.innerHTML = getScoreHtml(myHighScore);
+
+                    // 計算排名 (比我高的人數 + 1)
+                    const qRank = query(leaderRef, where("score", ">", myHighScore));
+                    const snapshotRank = await getCountFromServer(qRank);
+                    const myRealRank = snapshotRank.data().count + 1;
+
+                    const rankNumEl = myFixedRow.querySelector('.rank-num');
+                    if (rankNumEl) {
+                        rankNumEl.textContent = myRealRank;
+                        rankNumEl.style.fontSize = myRealRank > 999 ? "24px" : "40px";
+                    }
+                }
+            } else if (myFixedRow) {
+                const rankNumEl = myFixedRow.querySelector('.rank-num');
+                if (rankNumEl) rankNumEl.textContent = "-";
+            }
+        } catch (error) {
+            console.error("排行榜讀取失敗:", error);
+            list.innerHTML = '<div style="color:red; text-align:center; padding-top:50px;">連線失敗</div>';
+        }
+    };
+
+    // 舊版兼容 (如果你其他地方還有呼叫這個)
+    window.getLeaderboard = async function() {
         const leaderRef = collection(db, `leaderboard_${GAME_ID}`);
         const q = query(leaderRef, orderBy("score", "desc"), limit(10));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => doc.data());
-    } catch (e) {
-        console.error("讀取排行榜失敗:", e);
-        return [];
-    }
-};
-
+    };
 </script>
+
 </body>
 </html>
