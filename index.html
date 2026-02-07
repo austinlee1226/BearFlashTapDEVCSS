@@ -978,6 +978,34 @@
     setupButtonFeedback(document.getElementById('res-btn-share'));
     setupButtonFeedback(document.getElementById('btn-confirm-name'));
 
+    // --- 📥 遊戲分享功能專區 (隔離開發，不影響遊戲邏輯) ---
+    async function doShare() {
+        try {
+            // 自動抓取遊戲數據： rounds (輪數), currentScore (總分)
+            const rounds = (typeof state !== 'undefined') ? state.round : 0;
+            const score = (typeof currentScore !== 'undefined') ? currentScore : 0;
+            
+            const shareText = `🐻【熊熊閃電手】挑戰成功！\n我拿到了 ${rounds} 輪，總計 ★${score} 分！\n👉 ${window.location.href}`;
+            const isLine = /Line/i.test(navigator.userAgent);
+
+            // 優先嘗試系統原生分享
+            if (navigator.share && !isLine) {
+                await navigator.share({ title: '熊熊閃電手', text: shareText, url: window.location.href });
+            } else {
+                // LINE 或 PC 環境跳轉
+                window.open(`https://line.me/R/share?text=${encodeURIComponent(shareText)}`, '_blank');
+            }
+        } catch (err) {
+            console.log("分享已取消或環境不支援");
+        }
+    }
+
+    // 強制綁定點擊事件，不依賴 setupButtonFeedback 的內建邏輯
+    const shareBtn1 = document.getElementById('btn-share');
+    const shareBtn2 = document.getElementById('res-btn-share');
+    
+    if (shareBtn1) shareBtn1.onclick = (e) => { e.preventDefault(); doShare(); };
+    if (shareBtn2) shareBtn2.onclick = (e) => { e.preventDefault(); doShare(); };
     function showInputScreen() {
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none';
