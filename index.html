@@ -22,7 +22,6 @@
         /* --- 1. 背景與角色 --- */
         #bg-main { width: 720px; height: 1280px; left: 360px; top: 640px; z-index: 0; }
         
-        /* 背景閃電 VFX */
         .vfx-thunder { width: 244px; height: 234px; z-index: 1; pointer-events: none; opacity: 1; }
         #vfx-thunder-left { left: 11px; top: 291px; transform: translate(-50%, -50%) scaleX(-1); animation: thunder-flicker-off 5s infinite; }
         #vfx-thunder-right { left: 711px; top: 293px; transform: translate(-50%, -50%); animation: thunder-flicker-off 7s infinite 2s; }
@@ -31,11 +30,9 @@
             0%, 92% { opacity: 1; } 93% { opacity: 0; } 94% { opacity: 1; } 95% { opacity: 0.3; } 96% { opacity: 1; } 100% { opacity: 1; }
         }
 
-        /* 角色設定 */
         #ui-character-bear, #ui-character-devil { width: 496px; height: 612px; left: 360px; top: 460px; z-index: 2; transition: filter 0.1s; }
         #ui-character-devil { display: none; }
 
-        /* 角色動畫 */
         @keyframes anim-shake {
             0% { transform: translate(-50%, -50%) rotate(0deg); }
             25% { transform: translate(-51%, -50%) rotate(-1deg); } 
@@ -43,17 +40,17 @@
             75% { transform: translate(-50.5%, -50%) rotate(-0.5deg); }
             100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
-        .effect-shake { animation: anim-shake 0.15s ease-in-out; }
+        .effect-shake { animation: anim-shake 0.15s ease-in-out; } 
 
         @keyframes anim-sink {
             0% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(0); }
             20% { transform: translate(-50%, -50%); opacity: 1; filter: grayscale(1); }
-            100% { transform: translate(-50%, -20%); opacity: 0; filter: grayscale(1); }
+            100% { transform: translate(-50%, 0%); opacity: 0; filter: grayscale(1); } 
         }
-        .effect-sink { animation: anim-sink 1.0s ease-in forwards; }
+        .effect-sink { animation: anim-sink 1.2s ease-in forwards; }
 
         @keyframes anim-rise {
-            0% { transform: translate(-50%, -20%); opacity: 0; }
+            0% { transform: translate(-50%, 0%); opacity: 0; } 
             100% { transform: translate(-50%, -50%); opacity: 1; }
         }
         .effect-rise { display: block !important; animation: anim-rise 0.8s ease-out forwards; }
@@ -66,13 +63,20 @@
             transform: translate(-50%, -50%) scale(1.2); z-index: 30;
             display: flex; justify-content: center; align-items: center; gap: 0; pointer-events: none;
         }
+        @keyframes timer-panic {
+            0% { transform: translate(-50%, -50%) scale(1.2); filter: none; }
+            50% { transform: translate(-50%, -50%) scale(1.3); filter: sepia(1) hue-rotate(-50deg) saturate(3); } 
+            100% { transform: translate(-50%, -50%) scale(1.2); filter: none; }
+        }
+        .timer-panic-mode { animation: timer-panic 0.5s infinite; }
+
         .timer-digit { height: 100%; width: 50px; object-fit: contain; margin: 0 -3px; }
         .timer-colon-slot { height: 60%; width: 30px; object-fit: contain; margin-top: -5px; }
 
         /* --- 3. 遊戲核心 UI --- */
         #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 20; }
         #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 20; }
-        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
+        #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.1s linear; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 22; pointer-events: none; }
         
         #ui-game-score {
@@ -81,12 +85,10 @@
         }
         .score-digit-img { height: 20px; width: auto; object-fit: contain; }
 
-        /* HIT 特效容器 */
+        /* HIT 特效 */
         .hit-effect-wrapper {
             position: absolute; display: flex; flex-direction: row; align-items: center; justify-content: center;
-            gap: 5px; pointer-events: none; 
-            z-index: 999; /* 最上層 */
-            transform: translate(-50%, -50%);
+            gap: 5px; pointer-events: none; z-index: 999; transform: translate(-50%, -50%);
             animation: hit-float 1.5s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
         }
         .hit-num-digit { height: 40px; width: auto; object-fit: contain; margin: 0 -10px; }
@@ -102,19 +104,16 @@
         #game-grid { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .card-slot { 
             position: absolute; width: 230px; height: 230px; transform: translate(-50%, -50%); 
-            pointer-events: auto; cursor: pointer; transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1); touch-action: manipulation; 
+            pointer-events: auto; cursor: pointer; transition: transform 0.08s cubic-bezier(0.1, 0.7, 1.0, 0.1), opacity 0.1s; touch-action: manipulation; 
+            display: none; 
         }
         .card-slot.pressed { transform: translate(-50%, -50%) scale(0.92) !important; filter: brightness(0.9); }
         .btn-card-base { width: 100%; height: 100%; display: block; }
         .num-wrapper { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; justify-content: center; align-items: center; gap: -10px; pointer-events: none; width: 100%; }
         .num-wrapper img { width: 121px; height: 134px; flex-shrink: 0; }
 
-        /* 星星粒子特效 */
-        .particle-star { 
-            position: absolute; width: 44px; height: 44px; pointer-events: none; 
-            z-index: 999; /* 最上層 */
-            transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; 
-        }
+        /* 星星粒子 */
+        .particle-star { position: absolute; width: 44px; height: 44px; pointer-events: none; z-index: 999; transform-origin: center; transition: transform 0.8s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.8s ease-in; opacity: 1; }
 
         .hud-item { z-index: 15; transition: opacity 0.2s; }
         #ui-heart-1 { width: 44px; height: 38px; left: 53px; top: 100px; }
@@ -134,7 +133,6 @@
         #ui-text-1 { width: 101px; height: 212px; left: 355px; top: 757px; }
         #ui-text-go { width: 343px; height: 185px; left: 357px; top: 757px; }
 
-        /* --- 5. 首頁圖層 --- */
         #ui-home-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 100; }
         #ui-mask { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); cursor: pointer; }
         #ui-panel-start { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 101; }
@@ -150,7 +148,6 @@
         #ui-text-start { width: 364px; height: 56px; left: 362px; top: 985px; z-index: 104; pointer-events: none; transition: transform 0.1s; }
         #btn-start.pressed ~ #ui-text-start { transform: translate(-50%, -50%) scale(0.95); filter: brightness(0.9); }
 
-        /* --- 輸入介面 --- */
         #ui-input-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 180; display: none; }
         #ui-panel-input { width: 540px; height: 240px; left: 360px; top: 600px; z-index: 181; }
         #ui-input-field {
@@ -163,7 +160,6 @@
         #ui-input-field::placeholder { color: rgba(255,255,255,0.3); }
         #btn-confirm-name { width: 522px; height: 101px; left: 360px; top: 800px; z-index: 182; cursor: pointer; }
 
-        /* --- 6. 🏆 結算介面 --- */
         #ui-result-screen { position: absolute; width: 100%; height: 100%; left: 0; top: 0; z-index: 200; display: none; }
         #res-panel { width: 617px; height: 998px; left: 360px; top: 659px; z-index: 201; }
         #res-panel-rank { width: 547px; height: 653px; left: 361px; top: 598px; z-index: 202; }
@@ -250,15 +246,15 @@
     <img src="assets/ui_combo_bar_cover.webp" class="ui-element" id="ui-combo-bar-cover">
 
     <div id="game-grid">
-        <div class="card-slot" style="left: 130px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_1.webp"></div></div>
-        <div class="card-slot" style="left: 360px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_2.webp"></div></div>
-        <div class="card-slot" style="left: 590px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_3.webp"></div></div>
-        <div class="card-slot" style="left: 130px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_4.webp"></div></div>
-        <div class="card-slot" style="left: 360px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_5.webp"></div></div>
-        <div class="card-slot" style="left: 590px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_6.webp"></div></div>
-        <div class="card-slot" style="left: 130px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_7.webp"></div></div>
-        <div class="card-slot" style="left: 360px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_8.webp"></div></div>
-        <div class="card-slot" style="left: 590px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"><img src="assets/num_grid_9.webp"></div></div>
+        <div class="card-slot" id="slot-0" style="left: 130px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-1" style="left: 360px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-2" style="left: 590px; top: 640px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-3" style="left: 130px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-4" style="left: 360px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-5" style="left: 590px; top: 870px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-6" style="left: 130px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-7" style="left: 360px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
+        <div class="card-slot" id="slot-8" style="left: 590px; top: 1100px;"><img src="assets/btn_card_base.webp" class="btn-card-base"><div class="num-wrapper"></div></div>
     </div>
 
     <img src="assets/ui_text_3.webp" class="ui-element countdown-img" id="ui-text-3">
@@ -300,7 +296,7 @@
         </div>
         <img src="assets/btn_coffee.webp" class="ui-element" id="res-btn-coffee">
         <img src="assets/btn_share.webp" class="ui-element" id="res-btn-share">
-        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="alert('Replay Logic Here')">
+        <img src="assets/btn_start.webp" class="ui-element" id="res-btn-retry" onclick="restartGame()">
         <img src="assets/ui_text_retry.webp" class="ui-element" id="ui-text-retry">
     </div>
 
@@ -314,11 +310,6 @@
         <button class="debug-btn" onclick="showInputScreen()" style="background:#2196f3; border-color:#64b5f6;">⌨ 測試輸入介面</button>
         <button class="debug-btn" onclick="showResultScreen()" style="background:#f57c00; border-color:#ffb74d;">💀 顯示結算介面</button>
         <button class="debug-btn" onclick="triggerBearDeath()" style="background:#d32f2f; border-color:#ef5350;">🐻 測試變身</button>
-    </div>
-    <div class="debug-group">
-        <label>遊戲流程</label>
-        <button class="debug-btn btn-play" onclick="startGameProcess()">▶ 測試倒數</button>
-        <button class="debug-btn" onclick="stopGameTimer()">⏹ 停止計時</button>
     </div>
     <div class="debug-group">
         <label>數字縮放</label>
@@ -335,42 +326,75 @@
 </div>
 
 <script>
+    /* --- 核心變數 --- */
+    const MAX_TIME = 10.0;
+    const MAX_HEARTS = 3;
+    const TIME_PENALTY = 1.0;
+    const TIME_BONUS = 0.5;
+    const COMBO_WINDOW_MAX = 1000; 
+    const COMBO_WINDOW_MIN = 300; 
+
+    let gameState = {
+        isPlaying: false,
+        score: 0,
+        hearts: 3,
+        timeLeft: MAX_TIME,
+        combo: 0,
+        round: 1, // 現在是第幾輪
+        currentTarget: 1, // 當前要點的數字
+        maxTargetInWave: 9, // 本輪最大數字
+        lastClickTime: 0,
+        numbersOnGrid: [] 
+    };
+
     let gameTimer = null;
-    let timeLeft = 6000;
-    let comboCount = 0;
-    let currentScore = 0;
     let playerName = "YOU"; 
     let lastInputTime = 0;
     const INPUT_COOLDOWN = 60; 
 
+    /* --- DOM 快取 --- */
     const timerEls = {
+        container: document.getElementById('ui-timer-container'),
         d1: document.getElementById('timer-d1'),
         d2: document.getElementById('timer-d2'),
         d3: document.getElementById('timer-d3'),
         d4: document.getElementById('timer-d4')
     };
+    const comboBarFill = document.getElementById('ui-combo-bar-fill');
+    const cardSlots = Array.from(document.querySelectorAll('.card-slot'));
+
+    /* --- 初始化 --- */
+    window.addEventListener('resize', resizeGame);
+    window.addEventListener('load', () => {
+        resizeGame();
+        preloadGameAssets();
+        initLeaderboard(); 
+        
+        cardSlots.forEach((slot, index) => {
+            setupButtonFeedback(slot, true, index);
+        });
+
+        setupButtonFeedback(document.getElementById('btn-start'));
+        setupButtonFeedback(document.getElementById('btn-coffee'));
+        setupButtonFeedback(document.getElementById('btn-share'));
+        setupButtonFeedback(document.getElementById('res-btn-retry'));
+        setupButtonFeedback(document.getElementById('res-btn-coffee'));
+        setupButtonFeedback(document.getElementById('res-btn-share'));
+        setupButtonFeedback(document.getElementById('btn-confirm-name'));
+
+        document.getElementById('ui-input-field').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') submitName();
+        });
+        
+        updateScoreDisplay(0);
+        updateTimerDisplay(MAX_TIME);
+    });
 
     function resizeGame() {
         const container = document.getElementById('game-container');
         const scale = Math.min(window.innerWidth / 720, window.innerHeight / 1280);
         container.style.transform = `scale(${scale})`;
     }
-    window.addEventListener('resize', resizeGame);
-    window.addEventListener('load', () => {
-        resizeGame();
-        preloadGameAssets();
-        // [修正] 綁定按鍵特效與換數字
-        document.querySelectorAll('.card-slot').forEach((slot, i) => {
-            setupButtonFeedback(slot, true); // 綁特效
-            slot.addEventListener('click', () => setGridNumber(i, Math.floor(Math.random() * 99999) + 1)); // 綁換數字
-        });
-        updateScoreDisplay(0); 
-        initLeaderboard(); 
-        
-        document.getElementById('ui-input-field').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') submitName();
-        });
-    });
 
     function preloadGameAssets() {
         const assets = [
@@ -382,24 +406,232 @@
             'icon_star.webp', 'vfx_thunder.webp', 'ui_text_hit.webp', 'character_bear_devil.webp',
             'ui_panel_input_name.webp'
         ];
-        assets.forEach(name => {
-            const img = new Image();
-            img.src = 'assets/' + name;
+        assets.forEach(name => { const img = new Image(); img.src = 'assets/' + name; });
+    }
+
+    /* --- 遊戲流程 --- */
+    function startGameProcess() {
+        // Reset State
+        gameState = {
+            isPlaying: true,
+            score: 0,
+            hearts: MAX_HEARTS,
+            timeLeft: MAX_TIME,
+            combo: 0,
+            round: 1,
+            currentTarget: 1,
+            maxTargetInWave: 9,
+            lastClickTime: Date.now(),
+            numbersOnGrid: []
+        };
+
+        // UI Reset
+        document.getElementById('ui-home-screen').style.display = 'none';
+        document.getElementById('ui-result-screen').style.display = 'none'; 
+        document.getElementById('ui-input-screen').style.display = 'none';
+        document.getElementById('ui-character-bear').style.display = 'block';
+        document.getElementById('ui-character-bear').classList.remove('effect-sink');
+        document.getElementById('ui-character-devil').style.display = 'none';
+        document.getElementById('ui-character-devil').classList.remove('effect-rise');
+        timerEls.container.classList.remove('timer-panic-mode');
+        updateScoreDisplay(0);
+        testHP(3);
+        
+        // 倒數動畫
+        const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
+        let delay = 0;
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            el.style.display = 'none';
+            el.classList.remove('anim-pop');
         });
+        ids.forEach((id, index) => {
+            setTimeout(() => {
+                if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
+                const el = document.getElementById(id);
+                el.style.display = 'block';
+                el.classList.add('anim-pop');
+                if (id === 'ui-text-go') {
+                    setTimeout(() => { 
+                        el.style.display = 'none'; 
+                        startGameLoop(); 
+                    }, 500);
+                }
+            }, delay);
+            delay += 800;
+        });
+    }
+
+    function startGameLoop() {
+        spawnWave(); // 產生第一波
+        gameState.lastClickTime = Date.now();
+        
+        // 主計時器
+        if(gameTimer) clearInterval(gameTimer);
+        gameTimer = setInterval(() => {
+            if(!gameState.isPlaying) return;
+
+            gameState.timeLeft -= 0.01; 
+            
+            // 低時警示
+            if(gameState.timeLeft <= 3.0 && !timerEls.container.classList.contains('timer-panic-mode')) {
+                timerEls.container.classList.add('timer-panic-mode');
+            } else if (gameState.timeLeft > 3.0) {
+                timerEls.container.classList.remove('timer-panic-mode');
+            }
+
+            if (gameState.timeLeft <= 0) {
+                gameState.timeLeft = 0;
+                gameOver();
+            }
+            updateTimerDisplay(gameState.timeLeft);
+            updateComboBar();
+        }, 10);
+    }
+
+    function stopGame() {
+        gameState.isPlaying = false;
+        if(gameTimer) clearInterval(gameTimer);
+        timerEls.container.classList.remove('timer-panic-mode');
+    }
+
+    function restartGame() {
+        stopGame();
+        startGameProcess();
+    }
+
+    /* --- 核心邏輯 (Wave Mode) --- */
+    function spawnWave() {
+        // [修正] 邏輯：每輪起點 = 輪數
+        // Round 1: 1~9
+        // Round 2: 2~10
+        // Round 3: 3~11
+        const startNum = gameState.round;
+        gameState.currentTarget = startNum;
+        gameState.maxTargetInWave = startNum + 8;
+
+        // 產生數字
+        let nums = [];
+        for(let i=0; i<9; i++) nums.push(startNum + i);
+        // 洗牌
+        for (let i = nums.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [nums[i], nums[j]] = [nums[j], nums[i]];
+        }
+        gameState.numbersOnGrid = nums;
+
+        // 渲染
+        cardSlots.forEach((slot, i) => {
+            slot.style.display = 'block'; 
+            slot.style.opacity = '1';
+            slot.style.pointerEvents = 'auto';
+            setGridNumber(i, nums[i]);
+        });
+    }
+
+    function handleCardTap(index) {
+        if(!gameState.isPlaying) return;
+
+        const clickedNum = gameState.numbersOnGrid[index];
+        const slot = cardSlots[index];
+
+        // 必須點擊當前最小的數字
+        if (clickedNum === gameState.currentTarget) {
+            // --- HIT ---
+            const cx = parseInt(slot.style.left);
+            const cy = parseInt(slot.style.top);
+            createStarBurst(cx, cy);
+            createHitEffect(cx, cy, gameState.combo + 1);
+            
+            gameState.currentTarget++;
+            gameState.combo++;
+            gameState.score += (100 + gameState.combo * 10);
+            gameState.timeLeft = Math.min(MAX_TIME, gameState.timeLeft + TIME_BONUS);
+            gameState.lastClickTime = Date.now();
+
+            updateScoreDisplay(gameState.score);
+            
+            // [修正] 卡片隱藏 (等待整波清除)
+            slot.style.opacity = '0';
+            slot.style.pointerEvents = 'none';
+
+            // [修正] 檢查這波是否清空
+            if (gameState.currentTarget > gameState.maxTargetInWave) {
+                gameState.round++;
+                // 回血 (每5輪)
+                if (gameState.round % 5 === 1 && gameState.hearts < MAX_HEARTS) {
+                    gameState.hearts++;
+                    testHP(gameState.hearts);
+                }
+                setTimeout(spawnWave, 200); // 延遲一點點生成下一波
+            }
+
+        } else {
+            // --- MISS ---
+            gameState.hearts--;
+            testHP(gameState.hearts);
+            gameState.timeLeft -= TIME_PENALTY;
+            gameState.combo = 0;
+            
+            handleBearHit(); 
+
+            if(gameState.hearts <= 0) {
+                gameOver();
+            }
+        }
+    }
+
+    function updateComboBar() {
+        if (gameState.combo === 0) {
+            comboBarFill.style.transform = `translate(-50%, -50%) scaleX(0)`;
+            return;
+        }
+        
+        const now = Date.now();
+        const timePassed = now - gameState.lastClickTime;
+        const allowedWindow = Math.max(COMBO_WINDOW_MIN, COMBO_WINDOW_MAX - (gameState.combo * 20)); 
+        
+        let pct = 1 - (timePassed / allowedWindow);
+        if (pct <= 0) {
+            pct = 0;
+            gameState.combo = 0; 
+        }
+        
+        comboBarFill.style.transform = `translate(-50%, -50%) scaleX(${pct})`;
+    }
+
+    function gameOver() {
+        stopGame();
+        triggerBearDeath();
+    }
+
+    /* --- 視覺與特效 --- */
+    function setGridNumber(index, number) {
+        const slot = cardSlots[index];
+        const wrapper = slot.querySelector('.num-wrapper');
+        const numStr = number.toString();
+        wrapper.innerHTML = '';
+        for (let char of numStr) {
+            const img = document.createElement('img'); img.src = `assets/num_grid_${char}.webp`;
+            wrapper.appendChild(img);
+        }
+        let scaleValue = 1.0;
+        const len = numStr.length;
+        if (len === 2) scaleValue = 0.8;
+        else if (len === 3) scaleValue = 0.55;
+        else if (len >= 4) scaleValue = 0.4;
+        wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
     }
 
     function createStarBurst(x, y) {
         const container = document.getElementById('game-container');
-        const count = Math.floor(Math.random() * 3) + 4; 
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < 5; i++) {
             const star = document.createElement('img');
             star.src = 'assets/icon_star.webp';
             star.className = 'particle-star';
-            const size = Math.random() * 40 + 80; 
-            star.style.width = `${size}px`;
-            star.style.height = `${size}px`;
-            star.style.left = `${x}px`;
-            star.style.top = `${y}px`;
+            const size = Math.random() * 40 + 60; 
+            star.style.width = `${size}px`; star.style.height = `${size}px`;
+            star.style.left = `${x}px`; star.style.top = `${y}px`;
             star.style.transform = `translate(-50%, -50%) scale(0.5)`;
             const angle = Math.random() * Math.PI * 2; 
             const velocity = Math.random() * 150 + 100; 
@@ -436,6 +668,68 @@
         setTimeout(() => wrapper.remove(), 1500); 
     }
 
+    function handleBearHit() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
+        activeBear.classList.remove('effect-shake');
+        void activeBear.offsetWidth; 
+        activeBear.classList.add('effect-shake');
+        setTimeout(() => activeBear.classList.remove('effect-shake'), 200);
+    }
+
+    function triggerBearDeath() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        bearNormal.classList.add('effect-sink');
+        setTimeout(() => {
+            bearNormal.style.display = 'none'; 
+            bearDevil.style.display = 'block'; 
+            bearDevil.classList.add('effect-rise');
+            setTimeout(showInputScreen, 1500); 
+        }, 1000); 
+    }
+
+    function setupButtonFeedback(element, isCard = false, index = -1) {
+        if (!element) return;
+        const pressClass = isCard ? 'pressed' : 'btn-pressed';
+        element.addEventListener('pointerdown', (e) => {
+            const now = Date.now();
+            if (now - lastInputTime < INPUT_COOLDOWN) return; 
+            lastInputTime = now;
+
+            element.classList.add(pressClass);
+            element.setPointerCapture(e.pointerId);
+
+            if (isCard && gameState.isPlaying) {
+                handleCardTap(index);
+            }
+        });
+        const release = () => { element.classList.remove(pressClass); };
+        element.addEventListener('pointerup', release);
+        element.addEventListener('pointerleave', release);
+        element.addEventListener('pointercancel', release);
+    }
+
+    function showInputScreen() {
+        document.getElementById('ui-input-screen').style.display = 'block';
+        document.getElementById('ui-input-field').focus();
+    }
+
+    function submitName() {
+        const inputVal = document.getElementById('ui-input-field').value.trim();
+        if (inputVal) playerName = inputVal.substring(0, 8); 
+        document.getElementById('ui-input-screen').style.display = 'none';
+        showResultScreen();
+    }
+
+    function showResultScreen() {
+        document.getElementById('ui-result-screen').style.display = 'block';
+        document.getElementById('my-rank-name').textContent = playerName;
+        const myScoreContainer = document.getElementById('my-rank-score-container');
+        if(myScoreContainer) myScoreContainer.innerHTML = getScoreHtml(gameState.score);
+    }
+
     function updateScoreDisplay(newScore) {
         const scoreContainer = document.getElementById('ui-game-score');
         scoreContainer.innerHTML = ''; 
@@ -451,10 +745,19 @@
     function getScoreHtml(score) {
         const str = score.toString().padStart(8, '0');
         let html = '';
-        for(let char of str) {
-            html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
-        }
+        for(let char of str) html += `<img src="assets/num_grid_${char}.webp" class="rank-score-digit">`;
         return html;
+    }
+
+    function updateTimerDisplay(totalSecs) {
+        const seconds = Math.floor(totalSecs);
+        const millis = Math.floor((totalSecs % 1) * 100);
+        const sStr = seconds.toString().padStart(2, '0');
+        const mStr = millis.toString().padStart(2, '0');
+        if (timerEls.d1.src.indexOf(`num_ui_${sStr[0]}.webp`) === -1) timerEls.d1.src = `assets/num_ui_${sStr[0]}.webp`;
+        if (timerEls.d2.src.indexOf(`num_ui_${sStr[1]}.webp`) === -1) timerEls.d2.src = `assets/num_ui_${sStr[1]}.webp`;
+        if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
+        if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
     }
 
     function initLeaderboard() {
@@ -467,215 +770,29 @@
             row.className = 'rank-row';
             const rankStr = i;
             let nameRaw = `Player${i}`;
-            const nameStr = nameRaw.substring(0, 8); 
             let scoreRaw = 99999 - i * 100;
             const flagEmoji = flags[i % flags.length];
-            let rankFontSize = '40px'; 
-            if (i >= 1000) rankFontSize = '32px'; 
-            if (i >= 10000) rankFontSize = '26px'; 
+            let rankFontSize = i >= 10000 ? '26px' : (i >= 1000 ? '32px' : '40px'); 
             row.innerHTML = `
                 <span class="rank-num" style="font-size:${rankFontSize}">${rankStr}</span>
-                <span class="rank-name">${nameStr}</span>
+                <span class="rank-name">${nameRaw}</span>
                 <span class="rank-flag">${flagEmoji}</span>
                 <div class="rank-score">${getScoreHtml(scoreRaw)}</div>
             `;
             list.appendChild(row);
         }
-        const myScoreContainer = document.getElementById('my-rank-score-container');
-        if(myScoreContainer) {
-            myScoreContainer.innerHTML = getScoreHtml(12345);
-        }
     }
 
-    function handleBearHit() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
-        activeBear.classList.remove('effect-shake');
-        void activeBear.offsetWidth; 
-        activeBear.classList.add('effect-shake');
-        setTimeout(() => {
-            activeBear.classList.remove('effect-shake');
-        }, 200);
-    }
-
-    function triggerBearDeath() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        bearNormal.classList.add('effect-sink');
-        setTimeout(() => {
-            bearNormal.style.display = 'none'; 
-            bearDevil.style.display = 'block'; 
-            bearDevil.classList.add('effect-rise');
-        }, 1000); 
-    }
-
-    function setupButtonFeedback(element, isCard = false) {
-        if (!element) return;
-        const pressClass = isCard ? 'pressed' : 'btn-pressed';
-        element.addEventListener('pointerdown', (e) => {
-            const now = Date.now();
-            if (now - lastInputTime < INPUT_COOLDOWN) return; 
-            lastInputTime = now;
-            element.classList.add(pressClass);
-            element.setPointerCapture(e.pointerId);
-            if (isCard) {
-                const cx = parseInt(element.style.left);
-                const cy = parseInt(element.style.top);
-                createStarBurst(cx, cy);
-                comboCount++; 
-                createHitEffect(cx, cy, comboCount);
-                currentScore += 100;
-                updateScoreDisplay(currentScore);
-                handleBearHit();
-            }
-        });
-        const release = () => { element.classList.remove(pressClass); };
-        element.addEventListener('pointerup', release);
-        element.addEventListener('pointerleave', release);
-        element.addEventListener('pointercancel', release);
-    }
-    
-    // Bind buttons
-    setupButtonFeedback(document.getElementById('btn-start'));
-    setupButtonFeedback(document.getElementById('btn-coffee'));
-    setupButtonFeedback(document.getElementById('btn-share'));
-    setupButtonFeedback(document.getElementById('res-btn-retry'));
-    setupButtonFeedback(document.getElementById('res-btn-coffee'));
-    setupButtonFeedback(document.getElementById('res-btn-share'));
-    setupButtonFeedback(document.getElementById('btn-confirm-name'));
-
-    function showInputScreen() {
-        document.getElementById('ui-home-screen').style.display = 'none';
-        document.getElementById('ui-result-screen').style.display = 'none';
-        document.getElementById('ui-input-screen').style.display = 'block';
-        document.getElementById('ui-input-field').focus();
-    }
-
-    function submitName() {
-        const inputVal = document.getElementById('ui-input-field').value.trim();
-        if (inputVal) {
-            playerName = inputVal.substring(0, 8); 
-        }
-        document.getElementById('ui-input-screen').style.display = 'none';
-        showResultScreen();
-    }
-
-    function showResultScreen() {
-        document.getElementById('ui-result-screen').style.display = 'block';
-        
-        const nameEl = document.getElementById('my-rank-name');
-        if(nameEl) nameEl.textContent = playerName;
-
-        const myScoreContainer = document.getElementById('my-rank-score-container');
-        if(myScoreContainer) {
-            myScoreContainer.innerHTML = getScoreHtml(currentScore);
-        }
-    }
-
-    function updateTimerDisplay(totalUnits) {
-        const seconds = Math.floor(totalUnits / 100);
-        const millis = totalUnits % 100;
-        const sStr = seconds.toString().padStart(2, '0');
-        const mStr = millis.toString().padStart(2, '0');
-        if (timerEls.d1.src.indexOf(`num_ui_${sStr[0]}.webp`) === -1) timerEls.d1.src = `assets/num_ui_${sStr[0]}.webp`;
-        if (timerEls.d2.src.indexOf(`num_ui_${sStr[1]}.webp`) === -1) timerEls.d2.src = `assets/num_ui_${sStr[1]}.webp`;
-        if (timerEls.d3.src.indexOf(`num_ui_${mStr[0]}.webp`) === -1) timerEls.d3.src = `assets/num_ui_${mStr[0]}.webp`;
-        if (timerEls.d4.src.indexOf(`num_ui_${mStr[1]}.webp`) === -1) timerEls.d4.src = `assets/num_ui_${mStr[1]}.webp`;
-    }
-
-    function startGameTimer() {
-        stopGameTimer();
-        timeLeft = 6000;
-        comboCount = 0; 
-        currentScore = 0; 
-        updateScoreDisplay(currentScore);
-        updateTimerDisplay(timeLeft);
-        gameTimer = setInterval(() => {
-            timeLeft--;
-            if (timeLeft <= 0) {
-                timeLeft = 0;
-                stopGameTimer();
-                alert("Time Up!");
-                showInputScreen();
-            }
-            updateTimerDisplay(timeLeft);
-        }, 10);
-    }
-
-    function stopGameTimer() {
-        if (gameTimer) clearInterval(gameTimer);
-    }
-
-    function startGameProcess() {
-        document.getElementById('ui-home-screen').style.display = 'none';
-        document.getElementById('ui-result-screen').style.display = 'none'; 
-        document.getElementById('ui-input-screen').style.display = 'none';
-        
-        const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
-        let delay = 0;
-        ids.forEach(id => {
-            const el = document.getElementById(id);
-            el.style.display = 'none';
-            el.classList.remove('anim-pop');
-        });
-        ids.forEach((id, index) => {
-            setTimeout(() => {
-                if(index > 0) document.getElementById(ids[index-1]).style.display = 'none';
-                const el = document.getElementById(id);
-                el.style.display = 'block';
-                el.classList.add('anim-pop');
-                if (id === 'ui-text-go') {
-                    setTimeout(() => { 
-                        el.style.display = 'none'; 
-                        startGameTimer(); 
-                    }, 500);
-                }
-            }, delay);
-            delay += 800;
-        });
-    }
-
-    function setGridNumber(index, number) {
-        const slots = document.querySelectorAll('.card-slot');
-        if (!slots[index]) return;
-        const wrapper = slots[index].querySelector('.num-wrapper');
-        const numStr = number.toString();
-        wrapper.innerHTML = '';
-        for (let char of numStr) {
-            const img = document.createElement('img'); img.src = `assets/num_grid_${char}.webp`;
-            wrapper.appendChild(img);
-        }
-        let scaleValue = 1.0;
-        const len = numStr.length;
-        if (len === 2) scaleValue = 0.8;
-        else if (len === 3) scaleValue = 0.5;
-        else if (len === 4) scaleValue = 0.4;
-        else if (len >= 5) scaleValue = 0.3;
-        wrapper.style.transform = `translate(-50%, -50%) scale(${scaleValue})`;
-    }
-
-    // [恢復] 數字縮放測試函式
     function testDigits(d) {
         const val = Math.pow(10, d) - 1;
-        document.querySelectorAll('.card-slot').forEach((_, i) => setGridNumber(i, val));
+        cardSlots.forEach((_, i) => setGridNumber(i, val));
     }
-
-    // [恢復] HP 測試函式
     function testHP(hp) {
-        for (let i = 1; i <= 3; i++) {
-            document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
-        }
+        for (let i = 1; i <= 3; i++) document.getElementById(`ui-heart-${i}`).style.opacity = i <= hp ? "1" : "0.2";
     }
-
-    // [恢復] Bar 測試函式
     function testBar(val) {
-        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
+        comboBarFill.style.transform = `translate(-50%, -50%) scaleX(${val/100})`;
     }
-    const fillBar = document.getElementById('ui-combo-bar-fill');
-    fillBar.addEventListener('click', () => { fillBar.style.transform = `translate(-50%, -50%) scaleX(${Math.random()})`; });
-
-    updateTimerDisplay(6000);
 </script>
 </body>
 </html>
