@@ -71,7 +71,7 @@
         .timer-colon-slot { height: 60%; width: 30px; object-fit: contain; margin-top: -5px; }
 
         /* --- 3. 遊戲核心 UI --- */
-        #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 20; }
+        #ui-text-combo-time { width: 189px; height: 32px; left: 129px; top: 501px; z-index: 30; }
         #ui-combo-bar-bg { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 20; }
         #ui-combo-bar-fill { width: 451px; height: 26px; left: 460px; top: 501px; z-index: 21; transform-origin: left; transform: translate(-50%, -50%) scaleX(1); transition: transform 0.3s ease-out; cursor: pointer; }
         #ui-combo-bar-cover { width: 25px; height: 26px; left: 237px; top: 501px; z-index: 22; pointer-events: none; }
@@ -350,6 +350,23 @@
             /* 我們只保留濾鏡就好，讓 brightness 提高亮度 */
             filter: brightness(2.5) contrast(1.5) !important; 
         }
+        /* 🌟 惡魔模式：Combo Time 文字狂暴縮放 */
+        @keyframes text-pulse-fast {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+            50% { transform: translate(-50%, -50%) scale(1.2); filter: brightness(1.5); }
+        }
+        .anim-text-pulse {
+            animation: text-pulse-fast 0.4s ease-in-out infinite !important;
+        }
+        
+      /* 🌟 惡魔模式：Combo Bar 狂暴閃爍 */
+        @keyframes bar-flash-fast {
+            0%, 100% { filter: brightness(1) sepia(0); }
+            50% { filter: brightness(2.5) sepia(1) hue-rotate(-50deg); /* 爆亮+泛紅 */ }
+        }
+        .anim-bar-flash {
+            animation: bar-flash-fast 0.15s infinite !important;
+        }  
  </style>
 </head>
 <body>
@@ -584,17 +601,36 @@
         return 300; 
     }
 
+    // 🌟 修改版：修正優先級，確保按錯也不會縮回去
     function updateComboBar() {
+        // 🔥 PRIORITY 1: 最優先檢查！
+        // 只要是「惡魔模式」或是「時間暫停(進場動畫)」，無條件全滿！
+        // 這樣就算 comboCount 變成 0，也會因為這裡 return 而不會執行下面的縮小邏輯
+        if (state.isDevilMode || state.isTimePaused) {
+            document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(1)`;
+            
+            if (state.isPlaying) {
+                comboTimerReq = requestAnimationFrame(updateComboBar);
+            }
+            return;
+        }
+
+        // 2. 正常模式：如果沒在玩或是 Combo 歸零 -> 縮到 0
         if (!state.isPlaying || comboCount === 0) {
             document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(0)`;
             return;
         }
+
+        // 3. 正常模式：計算倒數
         const now = Date.now();
         const windowTime = getComboWindow(comboCount);
         const elapsed = now - lastHitTime;
         let remainRatio = (windowTime - elapsed) / windowTime;
+
         if (remainRatio <= 0) remainRatio = 0;
+
         document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(${remainRatio})`;
+
         if (state.isPlaying && remainRatio > 0) {
             comboTimerReq = requestAnimationFrame(updateComboBar);
         }
@@ -674,10 +710,16 @@
         // 🧹 【新增】移除鍵盤震動特效
         document.getElementById('game-grid').classList.remove('grid-shaking');
 
+        // 🧹 【本次修正】移除 Combo 文字縮放特效 (解決重置後還在跳的問題)
+        const comboText = document.getElementById('ui-text-combo-time');
+        if (comboText) comboText.classList.remove('anim-text-pulse');
+
+        // 🧹 【本次新增】移除 Combo Bar 閃爍
+        document.getElementById('ui-combo-bar-fill').classList.remove('anim-bar-flash');
+
         // 🧹 【新增】移除惡魔閃電特效
         document.querySelectorAll('.vfx-thunder').forEach(t => {
             t.classList.remove('thunder-fast');
-            // 確保透明度與濾鏡回歸正常 (避免被 CSS 的 !important 鎖住)
             t.style.opacity = ''; 
             t.style.filter = '';
         });
@@ -691,7 +733,7 @@
             warningEl.classList.remove('anim-warning');
         }
 
-        // 2. 數值與介面重置 (維持原本邏輯)
+        // 2. 數值與介面重置
         if(window.testHP) window.testHP(3); 
         document.getElementById('ui-text-gameover').classList.remove('anim-pop-end');
         document.getElementById('ui-text-timeup').classList.remove('anim-pop-end');
@@ -702,9 +744,12 @@
         updateScoreDisplay(0);
         updateTimerDisplay(1000);
         
+        // 確保 Combo Bar 歸零
+        document.getElementById('ui-combo-bar-fill').style.transform = `translate(-50%, -50%) scaleX(0)`;
+        
         document.querySelectorAll('.card-slot').forEach(slot => {
             slot.style.opacity = '1'; 
-            slot.style.display = 'block'; // 確保顯示
+            slot.style.display = 'block'; 
             const wrapper = slot.querySelector('.num-wrapper');
             if (wrapper) wrapper.innerHTML = ''; 
         });
@@ -833,7 +878,7 @@
             setGridNumber(i, nums[i]);
         });
     }
-  // 🌟 3-1. 惡魔進場動畫 (包含音效切換 & 跳舞特效)
+  // 🌟 3-1. 惡魔進場動畫 (包含音效切換 & 跳舞特效 & 文字縮放)
     window.triggerDevilMode = function() {
         // --- 🎵 音效控制區 ---
         // 1. 暫停原本輕快的音樂
@@ -898,7 +943,14 @@
             setTimeout(() => {
                 state.isDevilMode = true;
 
-                // 🔥【新增】啟動惡魔跳舞 & 鍵盤震動
+                // 🔥【新增】文字開始縮放
+                const comboText = document.getElementById('ui-text-combo-time');
+                if (comboText) comboText.classList.add('anim-text-pulse');
+
+                // 🔥【本次新增】Combo Bar 開始狂閃
+                document.getElementById('ui-combo-bar-fill').classList.add('anim-bar-flash');
+
+                // 啟動惡魔跳舞 & 鍵盤震動
                 const devilChar = document.getElementById('ui-character-devil');
                 const grid = document.getElementById('game-grid');
                 if(devilChar) devilChar.classList.add('anim-devil-dance');
@@ -907,13 +959,18 @@
                 state.devilWaveCount = 0;
                 state.savedRoundNumber = state.round;
                 spawnWave(); 
+                
+                // 🔥【關鍵修正】重置時間戳記！
+                // 告訴程式：「現在剛開始喔！」這樣第一下點擊才不會被判斷成超時
+                lastHitTime = Date.now();
+
                 state.isTimePaused = false; 
             }, 1000);
 
         }, 3000);
     };
 
-    // 🌟 3-2. 惡魔退場動畫 (音效切換 + 移除跳舞特效)
+    // 🌟 3-2. 惡魔退場動畫 (音效切換 + 移除所有特效 + 接續 Combo)
     window.exitDevilMode = function() {
         state.isTimePaused = true;
 
@@ -924,11 +981,17 @@
         });
 
         // --- 🎵 音效切換 ---
-        // 1. 停止惡魔音樂
         const devilBgm = document.getElementById('bgm-devil');
         if (devilBgm) devilBgm.pause();
 
-        // 🧹【新增】停止跳舞 & 停止震動
+        // 🧹【新增】移除文字縮放 (回到正常模式就不跳了)
+        const comboText = document.getElementById('ui-text-combo-time');
+        if (comboText) comboText.classList.remove('anim-text-pulse');
+
+        // 🧹【本次新增】移除 Combo Bar 閃爍
+        document.getElementById('ui-combo-bar-fill').classList.remove('anim-bar-flash');
+
+        // 🧹 停止跳舞 & 停止震動
         const devilChar = document.getElementById('ui-character-devil');
         const grid = document.getElementById('game-grid');
         if(devilChar) devilChar.classList.remove('anim-devil-dance');
@@ -955,37 +1018,59 @@
             bearNormal.classList.add('effect-rise');
             
             // ⚡️ 閃電恢復
-            document.querySelectorAll('.vfx-thunder').forEach(t => t.classList.remove('thunder-fast'));
+            document.querySelectorAll('.vfx-thunder').forEach(t => {
+                t.classList.remove('thunder-fast');
+                t.style.opacity = ''; 
+                t.style.filter = '';
+            });
             document.getElementById('game-container').classList.remove('bg-devil-mode');
 
             // 恢復原本關卡
             setTimeout(() => {
                 state.isDevilMode = false;
+                
+                // 🔥【關鍵】重置 Combo 時間戳記
+                // 這行最重要！讓回到正常模式的那一瞬間，Combo 條是「滿的」開始倒數
+                // 這樣玩家的 Combo 就不會因為惡魔模式太久而斷掉
+                lastHitTime = Date.now();
+
                 state.round = state.savedRoundNumber; 
-                state.isGraceRound = true; // 確保回來後第一局是休息局
+                state.isGraceRound = true; 
                 spawnWave(); 
                 state.isTimePaused = false;
             }, 1000);
         }, 1000);
     };
 
-    // 🌟 Step 4-3: 最終版點擊邏輯 (包含機率檢定與惡魔進退場)
+    // 🌟 Step 4-3: 最終版點擊邏輯 (包含惡魔 Combo 保護)
     function handleCardTap(index) {
-        // 1. 暫停檢查 (惡魔變身時不能點)
+        // 1. 暫停檢查
         if (!state.isPlaying || state.isPaused || state.isTimePaused) return;
 
         const clickedNum = state.numbersOnGrid[index];
         const slot = document.querySelectorAll('.card-slot')[index];
-        if (slot.style.opacity === '0') return; // 已經點過的不能再點
+        if (slot.style.opacity === '0') return;
 
         // --- 🟢 答對了！ ---
         if (clickedNum === state.currentTarget) {
-            // Combo 計算
+            
+            // --- 👊 Combo 計算區 (修改這裡) ---
             const now = Date.now();
             const windowTime = getComboWindow(comboCount);
-            if (comboCount > 0 && (now - lastHitTime) > windowTime) comboCount = 1;
-            else comboCount++; 
+            
+            // 判斷是否超時
+            const isTimeout = (comboCount > 0 && (now - lastHitTime) > windowTime);
+
+            // 🔥【關鍵邏輯】
+            // 只有在「超時」且「不是惡魔模式」的時候，才歸零！
+            // 意思就是：惡魔模式下，就算你發呆 10 秒再按，Combo 還是會接著加！
+            if (isTimeout && !state.isDevilMode) {
+                comboCount = 1;
+            } else {
+                comboCount++;
+            }
             lastHitTime = now;
+            // ------------------------------------
 
             // 分數與特效
             const scoreThisHit = calculateStepScore(comboCount);
@@ -995,39 +1080,32 @@
             createStarBurst(cx, cy); createHitEffect(cx, cy, comboCount);
             handleBearHit(); 
 
-            // 音效與時間獎勵
+            // ... (後面原本的代碼不用動) ...
             const freq = 800 + (Math.min(comboCount, 200) * 5);
             playSnd(freq, 'sine', 0.1);
             timeLeft += 50; 
-            slot.style.opacity = '0'; // 隱藏卡片
+            slot.style.opacity = '0'; 
             state.currentTarget++;
             cancelAnimationFrame(comboTimerReq);
             updateComboBar();
 
-            // --- 🌊 當一波結束時 (9個數字點完) ---
+            // ... (檢查一波結束的代碼) ...
             if (state.currentTarget > state.maxTargetInWave) {
-                
-                // 【分支 A】如果正在「惡魔模式」中
-                if (state.isDevilMode) {
+                 // ... (這裡的內容跟原本一樣，可以不用動) ...
+                 if (state.isDevilMode) {
                     state.devilWaveCount++;
-                    // 檢查是否打完 3 輪
                     if (state.devilWaveCount >= 3) {
-                        // 👋 惡魔退場！
                         console.log("😈 惡魔退場，回到正常模式");
                         window.exitDevilMode();
-                        state.isGraceRound = true;    // 下一局是休息局 (機率不加)
-                        state.currentDevilChance = 10; // 機率重置
+                        state.isGraceRound = true;    
+                        state.currentDevilChance = 10; 
                     } else {
-                        // 還沒打完，繼續下一輪惡魔
                         console.log(`😈 惡魔連戰：第 ${state.devilWaveCount + 1} 輪`);
                         setTimeout(spawnWave, 500);
                     }
-                    return; // 惡魔模式下，不執行後面的正常關卡邏輯
+                    return; 
                 }
 
-                // 【分支 B】如果是在「正常模式」 (檢查是否觸發惡魔)
-                
-                // 1. 處理教學貼圖 (第一關結束關掉)
                 if (state.round === 1) {
                     const tutorialImg = document.getElementById('ui-tutorial-img');
                     if (tutorialImg) {
@@ -1036,35 +1114,27 @@
                     }
                 }
 
-                // 2. 🎲 惡魔觸發檢定 (關鍵邏輯)
                 let triggerDevil = false;
-                
                 if (state.isGraceRound) {
-                    // 如果是休息局：不檢定、不增加機率
                     console.log(`🛡️ 休息局：機率維持 ${state.currentDevilChance}%`);
-                    state.isGraceRound = false; // 消耗掉休息狀態
+                    state.isGraceRound = false; 
                 } else {
-                    // 正常局：進行檢定
                     const roll = Math.random() * 100;
                     console.log(`🎲 檢定：骰出 ${Math.floor(roll)} / 當前機率 ${state.currentDevilChance}%`);
-                    
                     if (roll < state.currentDevilChance) {
                         triggerDevil = true;
                     } else {
-                        // 沒中：機率 +5%
                         state.currentDevilChance += 5;
                     }
                 }
 
                 if (triggerDevil) {
-                    // 🔥 中獎！觸發惡魔！
                     console.log("🔥 觸發惡魔模式！");
-                    state.currentDevilChance = 10; // 重置機率
-                    window.triggerDevilMode(); // 呼叫導演系統
-                    return; // 暫停後續動作
+                    state.currentDevilChance = 10; 
+                    window.triggerDevilMode(); 
+                    return; 
                 }
 
-                // 3. 沒遇到惡魔 -> 正常過關 (加血、下一關)
                 if (state.round % 5 === 0 && state.hearts < 3) {
                     state.hearts++;
                     if(window.testHP) window.testHP(state.hearts);
@@ -1077,12 +1147,19 @@
 
         // --- 🔴 答錯了 ---
         } else {
+            // ... (答錯邏輯不用動) ...
             state.hearts--;
-            timeLeft -= 100; comboCount = 0; lastHitTime = 0;
+            timeLeft -= 100; 
+            
+            // 🔥【補充】惡魔模式下答錯，Combo 要不要歸零？
+            // 如果你想讓惡魔模式完全無敵，就把這行也包進 if (!state.isDevilMode)
+            // 但通常答錯歸零是合理的懲罰，這裡我們先維持原樣
+            comboCount = 0; 
+            
+            lastHitTime = 0;
             playSnd(150, 'sawtooth', 0.2);
             if(window.testHP) window.testHP(state.hearts);
             
-            // 錯誤震動特效
             slot.classList.add('wrong-flash-card');
             setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
             
