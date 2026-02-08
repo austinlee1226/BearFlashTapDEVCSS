@@ -275,6 +275,14 @@
 .timer-pulse {
     animation: timerPulse 0.5s infinite;
 }
+/* 教學貼圖閃爍動畫 */
+@keyframes tutorial-flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+.anim-flicker {
+    animation: tutorial-flicker 1.5s infinite; /* 數字越大閃越慢 */
+}
  </style>
 </head>
 <body>
@@ -551,7 +559,7 @@
 
         // 🌟 補上這一行！讓程式一進來就去設定貼圖
         initLocalization();
-        
+
         document.querySelectorAll('.card-slot').forEach((slot, i) => {
             setupButtonFeedback(slot, true, i); 
         });
@@ -603,9 +611,13 @@
 
     // 🌟 全域掛載 StartGame
     window.startGameProcess = function() {
-        // 貼在 resetGameUI(); 下方
+       // 🌟 在這裡貼上新的閃爍邏輯代碼
         const tutorialImg = document.getElementById('ui-tutorial-img');
-        if (tutorialImg) tutorialImg.style.display = 'block';
+        if (tutorialImg) {
+            tutorialImg.style.display = 'block';
+            tutorialImg.classList.add('anim-flicker'); // 加入閃爍動畫
+        }
+
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
@@ -705,11 +717,15 @@
             updateComboBar();
 
             if (state.currentTarget > state.maxTargetInWave) {
-        // 貼在 if (state.currentTarget > state.maxTargetInWave) { 的正下方
-            if (state.round === 1) {
-            const tutorialImg = document.getElementById('ui-tutorial-img');
-            if (tutorialImg) tutorialImg.style.display = 'none';
-        }   
+        // 🌟 從這裡開始取代 (原本的 721-724 行)
+           if (state.round === 1) {
+               const tutorialImg = document.getElementById('ui-tutorial-img');
+               if (tutorialImg) {
+                   tutorialImg.style.display = 'none';
+                   tutorialImg.classList.remove('anim-flicker'); // 加上這一行確保下次重玩正常
+               }
+           }
+           // 🌟 取代結束，接續原本 725 行的加血邏輯
                 if (state.round % 5 === 0 && state.hearts < 3) {
                     state.hearts++;
                     if(window.testHP) window.testHP(state.hearts);
