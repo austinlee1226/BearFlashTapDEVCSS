@@ -658,22 +658,53 @@
     }
 
     function resetGameUI() {
+        // 1. 角色重置
         const bear = document.getElementById('ui-character-bear');
         const devil = document.getElementById('ui-character-devil');
+        
         bear.style.display = 'block';
         bear.classList.remove('effect-sink', 'effect-shake');
+        
         devil.style.display = 'none';
         devil.classList.remove('effect-rise');
+        
+        // 🧹 【新增】移除惡魔跳舞特效
+        devil.classList.remove('anim-devil-dance');
+
+        // 🧹 【新增】移除鍵盤震動特效
+        document.getElementById('game-grid').classList.remove('grid-shaking');
+
+        // 🧹 【新增】移除惡魔閃電特效
+        document.querySelectorAll('.vfx-thunder').forEach(t => {
+            t.classList.remove('thunder-fast');
+            // 確保透明度與濾鏡回歸正常 (避免被 CSS 的 !important 鎖住)
+            t.style.opacity = ''; 
+            t.style.filter = '';
+        });
+
+        // 移除其他可能殘留的狀態
+        const container = document.getElementById('game-container');
+        container.classList.remove('bg-devil-mode', 'anim-red-flash');
+        const warningEl = document.getElementById('ui-text-warning');
+        if (warningEl) {
+            warningEl.style.display = 'none';
+            warningEl.classList.remove('anim-warning');
+        }
+
+        // 2. 數值與介面重置 (維持原本邏輯)
         if(window.testHP) window.testHP(3); 
         document.getElementById('ui-text-gameover').classList.remove('anim-pop-end');
         document.getElementById('ui-text-timeup').classList.remove('anim-pop-end');
         document.getElementById('ui-home-screen').style.display = 'none';
         document.getElementById('ui-result-screen').style.display = 'none'; 
         document.getElementById('ui-input-screen').style.display = 'none';
+        
         updateScoreDisplay(0);
         updateTimerDisplay(1000);
+        
         document.querySelectorAll('.card-slot').forEach(slot => {
             slot.style.opacity = '1'; 
+            slot.style.display = 'block'; // 確保顯示
             const wrapper = slot.querySelector('.num-wrapper');
             if (wrapper) wrapper.innerHTML = ''; 
         });
