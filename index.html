@@ -283,6 +283,36 @@
 .anim-flicker {
     animation: tutorial-flicker 1.5s infinite; /* 數字越大閃越慢 */
 }
+/* --- 😈 惡魔模式專用特效 --- */
+
+/* 1. 警告文字閃爍 (急促感) */
+@keyframes warning-flash {
+    0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    50% { opacity: 0.2; transform: translate(-50%, -50%) scale(1.1); }
+}
+.anim-warning {
+    animation: warning-flash 0.3s infinite !important;
+}
+
+/* 2. ⚡️ 閃電加速 (讓背景狂閃) */
+.thunder-fast {
+    animation-duration: 0.2s !important; /* 原本是 5s，現在變 0.2s */
+    opacity: 0.8 !important;
+}
+
+/* 3. 畫面變紅 (壓抑氣氛) */
+.bg-devil-mode {
+    filter: sepia(1) hue-rotate(-50deg) saturate(3) !important;
+    transition: filter 1s;
+}
+/* 🔴 紅色警報閃爍 (Strobe Light) */
+@keyframes red-strobe {
+    0%, 100% { filter: none; }
+    50% { filter: sepia(1) hue-rotate(-50deg) saturate(5) brightness(0.8); }
+}
+.anim-red-flash {
+    animation: red-strobe 0.15s infinite; /* 0.15秒狂閃一次，超急促 */
+}
  </style>
 </head>
 <body>
@@ -335,6 +365,7 @@
     <img src="assets/ui_text_2.webp" class="ui-element countdown-img" id="ui-text-2">
     <img src="assets/ui_text_1.webp" class="ui-element countdown-img" id="ui-text-1">
     <img src="assets/ui_text_go.webp" class="ui-element countdown-img" id="ui-text-go">
+    <img id="ui-text-warning" class="ui-element" src="assets/ui_text_warning.webp" style="display: none; z-index: 200; left: 352px; top: 776px; width: 554px; height: 221px;">
     <img id="ui-tutorial-img" class="ui-element" src="" style="display: none; z-index: 60;">
 
     <img src="assets/ui_text_gameover.webp" class="ui-element end-text" id="ui-text-gameover">
@@ -625,8 +656,25 @@
         if (bgm) { bgm.volume = 0.5; bgm.play().catch(e => console.log("Music blocked:", e)); }
 
         resetGameUI();
-
-        state = { isPlaying: false, isPaused: false, hearts: 3, round: 1, currentTarget: 1, maxTargetInWave: 9, numbersOnGrid: [] };
+        // 🌟 貼在原本第 652 行的位置
+        // 🌟 Step 4-1: 更新 state (加入機率與保底變數)
+    state = { 
+        isPlaying: false, 
+        isPaused: false, 
+        hearts: 3, 
+        round: 1, 
+        currentTarget: 1, 
+        maxTargetInWave: 9, 
+        numbersOnGrid: [],
+        // 😈 惡魔模式變數：
+        isDevilMode: false,      
+        isTimePaused: false,     
+        devilWaveCount: 0,       
+        savedRoundNumber: 1,
+        // 🎲 機率變數：
+        currentDevilChance: 10,  // 起始機率 10%
+        isGraceRound: false      // 是否為剛回歸的休息局
+        };
         currentScore = 0;
         
         const ids = ['ui-text-3', 'ui-text-2', 'ui-text-1', 'ui-text-go'];
@@ -662,85 +710,277 @@
         lastHitTime = Date.now(); 
         if (gameTimer) clearInterval(gameTimer);
         gameTimer = setInterval(() => {
-            if (!state.isPlaying || state.isPaused) return;
+            if (!state.isPlaying || state.isPaused || state.isTimePaused) return;
             timeLeft--;
             if (timeLeft <= 0) { timeLeft = 0; gameOver('time'); }
             updateTimerDisplay(timeLeft);
         }, 10);
     }
 
+    // 🌟 Step 4-2: 全新的雙軌制生成系統 (取代原本的 spawnWave)
     function spawnWave() {
-        const startNum = state.round;
+        let startNum;
+
+        // 判斷現在是「惡魔軌道」還是「正常軌道」
+        if (state.isDevilMode) {
+            // 😈 惡魔軌道：位數 + 1
+            const normalDigits = state.savedRoundNumber.toString().length;
+            const devilDigits = normalDigits + 1;
+            
+            // 計算亂數範圍 (例如 2位數 -> 產生 100~990 之間的起點)
+            const min = Math.pow(10, devilDigits - 1);
+            const max = Math.pow(10, devilDigits) - 9; 
+            
+            // 隨機決定起點 (這是亂數，但後面會生成連續數字)
+            startNum = Math.floor(Math.random() * (max - min + 1)) + min;
+            
+        } else {
+            // 🐻 正常軌道：照著關卡數
+            startNum = state.round;
+        }
+
+        // 設定目標
         state.currentTarget = startNum;
         state.maxTargetInWave = startNum + 8;
+
+        // 產生連續數字 (Sequential)
         let nums = [];
         for(let i=0; i<9; i++) nums.push(startNum + i);
+
+        // 洗牌 (打散在九宮格位置)
         for (let i = nums.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [nums[i], nums[j]] = [nums[j], nums[i]];
         }
+
         state.numbersOnGrid = nums;
+        
+        // 顯示卡片
         const slots = document.querySelectorAll('.card-slot');
         slots.forEach((slot, i) => {
-            slot.style.display = 'block'; slot.style.opacity = '1';
+            slot.style.display = 'block'; 
+            slot.style.opacity = '1';
             setGridNumber(i, nums[i]);
         });
     }
+    // 🌟 3-1. 惡魔進場動畫 (三階段：閃紅 -> 文字 -> 變身)
+    window.triggerDevilMode = function() {
+        // --- 階段一：紅色警報狂閃 ---
+        state.isTimePaused = true; 
+        
+        // 清空桌面
+        document.querySelectorAll('.card-slot').forEach(slot => {
+            slot.style.opacity = '0';
+            slot.style.display = 'none';
+        });
 
+        // 🔴 啟動紅色閃爍 (加 class)
+        const container = document.getElementById('game-container');
+        container.classList.add('anim-red-flash');
+        
+        // 🔊 播警報聲
+        playSnd(150, 'sawtooth', 0.5); 
+
+        // --- 階段二：(1.5秒後) 停止閃紅，出現 WARNING ---
+        setTimeout(() => {
+            // 🛑 移除紅色閃爍 (畫面恢復正常顏色)
+            container.classList.remove('anim-red-flash');
+
+            // ⚠️ 顯示警告文字
+            const warningEl = document.getElementById('ui-text-warning');
+            if (warningEl) {
+                warningEl.style.display = 'block';
+                warningEl.classList.add('anim-warning');
+            }
+        }, 1500);
+
+        // --- 階段三：(再過 1.5秒，共3秒後) 文字消失，變身開始 ---
+        setTimeout(() => {
+            // 隱藏警告文字
+            const warningEl = document.getElementById('ui-text-warning');
+            if (warningEl) {
+                warningEl.style.display = 'none';
+                warningEl.classList.remove('anim-warning');
+            }
+
+            // 🐻 熊熊變身 (利用原本寫好的函式)
+            window.triggerBearDeath(); 
+            
+            // ⚡️ 閃電加速 (這時候才加速，配合變身)
+            const thunders = document.querySelectorAll('.vfx-thunder');
+            thunders.forEach(t => t.classList.add('thunder-fast'));
+
+            // --- 階段四：(再過 1秒變身演完) 正式開戰 ---
+            setTimeout(() => {
+                state.isDevilMode = true;
+                state.devilWaveCount = 0; // 重置惡魔輪數
+                state.savedRoundNumber = state.round; // 💾 存檔！
+                
+                spawnWave(); // 生成惡魔數字
+                
+                state.isTimePaused = false; // 解除暫停，開戰！
+            }, 1000);
+
+        }, 3000);
+    };
+
+    // 🌟 3-2. 惡魔退場動畫 (導演系統 B)
+        window.exitDevilMode = function() {
+        state.isTimePaused = true;
+
+        // 清空桌面
+        document.querySelectorAll('.card-slot').forEach(slot => {
+            slot.style.opacity = '0';
+            slot.style.display = 'none';
+        });
+
+        // 變回正常熊熊
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        
+        // 惡魔下沉
+        bearDevil.classList.remove('effect-rise');
+        bearDevil.classList.add('effect-sink');
+
+        setTimeout(() => {
+            bearDevil.style.display = 'none';
+            bearNormal.style.display = 'block';
+            bearNormal.classList.remove('effect-sink');
+            bearNormal.classList.add('effect-rise');
+            
+            // ⚡️ 閃電恢復
+            document.querySelectorAll('.vfx-thunder').forEach(t => t.classList.remove('thunder-fast'));
+            document.getElementById('game-container').classList.remove('bg-devil-mode');
+
+            // 恢復原本關卡
+            setTimeout(() => {
+                state.isDevilMode = false;
+                state.round = state.savedRoundNumber; // 📂 讀檔！回到原本關卡
+                
+                spawnWave(); // 生成原本順序的數字
+                
+                state.isTimePaused = false;
+            }, 1000);
+        }, 1000);
+    }
+
+    // 🌟 Step 4-3: 最終版點擊邏輯 (包含機率檢定與惡魔進退場)
     function handleCardTap(index) {
-        if (!state.isPlaying || state.isPaused) return;
+        // 1. 暫停檢查 (惡魔變身時不能點)
+        if (!state.isPlaying || state.isPaused || state.isTimePaused) return;
+
         const clickedNum = state.numbersOnGrid[index];
         const slot = document.querySelectorAll('.card-slot')[index];
-        if (slot.style.opacity === '0') return;
+        if (slot.style.opacity === '0') return; // 已經點過的不能再點
 
+        // --- 🟢 答對了！ ---
         if (clickedNum === state.currentTarget) {
+            // Combo 計算
             const now = Date.now();
             const windowTime = getComboWindow(comboCount);
             if (comboCount > 0 && (now - lastHitTime) > windowTime) comboCount = 1;
             else comboCount++; 
             lastHitTime = now;
 
+            // 分數與特效
             const scoreThisHit = calculateStepScore(comboCount);
             currentScore += scoreThisHit;
             updateScoreDisplay(currentScore);
-
             const cx = parseInt(slot.style.left); const cy = parseInt(slot.style.top);
             createStarBurst(cx, cy); createHitEffect(cx, cy, comboCount);
             handleBearHit(); 
 
+            // 音效與時間獎勵
             const freq = 800 + (Math.min(comboCount, 200) * 5);
             playSnd(freq, 'sine', 0.1);
             timeLeft += 50; 
-            slot.style.opacity = '0';
+            slot.style.opacity = '0'; // 隱藏卡片
             state.currentTarget++;
             cancelAnimationFrame(comboTimerReq);
             updateComboBar();
 
+            // --- 🌊 當一波結束時 (9個數字點完) ---
             if (state.currentTarget > state.maxTargetInWave) {
-        // 🌟 從這裡開始取代 (原本的 721-724 行)
-           if (state.round === 1) {
-               const tutorialImg = document.getElementById('ui-tutorial-img');
-               if (tutorialImg) {
-                   tutorialImg.style.display = 'none';
-                   tutorialImg.classList.remove('anim-flicker'); // 加上這一行確保下次重玩正常
-               }
-           }
-           // 🌟 取代結束，接續原本 725 行的加血邏輯
+                
+                // 【分支 A】如果正在「惡魔模式」中
+                if (state.isDevilMode) {
+                    state.devilWaveCount++;
+                    // 檢查是否打完 3 輪
+                    if (state.devilWaveCount >= 3) {
+                        // 👋 惡魔退場！
+                        console.log("😈 惡魔退場，回到正常模式");
+                        window.exitDevilMode();
+                        state.isGraceRound = true;    // 下一局是休息局 (機率不加)
+                        state.currentDevilChance = 10; // 機率重置
+                    } else {
+                        // 還沒打完，繼續下一輪惡魔
+                        console.log(`😈 惡魔連戰：第 ${state.devilWaveCount + 1} 輪`);
+                        setTimeout(spawnWave, 500);
+                    }
+                    return; // 惡魔模式下，不執行後面的正常關卡邏輯
+                }
+
+                // 【分支 B】如果是在「正常模式」 (檢查是否觸發惡魔)
+                
+                // 1. 處理教學貼圖 (第一關結束關掉)
+                if (state.round === 1) {
+                    const tutorialImg = document.getElementById('ui-tutorial-img');
+                    if (tutorialImg) {
+                        tutorialImg.style.display = 'none';
+                        tutorialImg.classList.remove('anim-flicker');
+                    }
+                }
+
+                // 2. 🎲 惡魔觸發檢定 (關鍵邏輯)
+                let triggerDevil = false;
+                
+                if (state.isGraceRound) {
+                    // 如果是休息局：不檢定、不增加機率
+                    console.log(`🛡️ 休息局：機率維持 ${state.currentDevilChance}%`);
+                    state.isGraceRound = false; // 消耗掉休息狀態
+                } else {
+                    // 正常局：進行檢定
+                    const roll = Math.random() * 100;
+                    console.log(`🎲 檢定：骰出 ${Math.floor(roll)} / 當前機率 ${state.currentDevilChance}%`);
+                    
+                    if (roll < state.currentDevilChance) {
+                        triggerDevil = true;
+                    } else {
+                        // 沒中：機率 +5%
+                        state.currentDevilChance += 5;
+                    }
+                }
+
+                if (triggerDevil) {
+                    // 🔥 中獎！觸發惡魔！
+                    console.log("🔥 觸發惡魔模式！");
+                    state.currentDevilChance = 10; // 重置機率
+                    window.triggerDevilMode(); // 呼叫導演系統
+                    return; // 暫停後續動作
+                }
+
+                // 3. 沒遇到惡魔 -> 正常過關 (加血、下一關)
                 if (state.round % 5 === 0 && state.hearts < 3) {
                     state.hearts++;
                     if(window.testHP) window.testHP(state.hearts);
                     playSnd(1200, 'sine', 0.3); createHealEffect();
                 }
+                
                 state.round++;
                 setTimeout(spawnWave, 200);
             }
+
+        // --- 🔴 答錯了 ---
         } else {
             state.hearts--;
             timeLeft -= 100; comboCount = 0; lastHitTime = 0;
             playSnd(150, 'sawtooth', 0.2);
             if(window.testHP) window.testHP(state.hearts);
+            
+            // 錯誤震動特效
             slot.classList.add('wrong-flash-card');
             setTimeout(() => slot.classList.remove('wrong-flash-card'), 200);
+            
             if (state.hearts <= 0) gameOver('hearts');
         }
     }
