@@ -327,6 +327,7 @@
     <img src="assets/ui_text_2.webp" class="ui-element countdown-img" id="ui-text-2">
     <img src="assets/ui_text_1.webp" class="ui-element countdown-img" id="ui-text-1">
     <img src="assets/ui_text_go.webp" class="ui-element countdown-img" id="ui-text-go">
+    <img id="ui-tutorial-img" class="ui-element" src="" style="display: none; z-index: 60;">
 
     <img src="assets/ui_text_gameover.webp" class="ui-element end-text" id="ui-text-gameover">
     <img src="assets/ui_text_timeup.webp" class="ui-element end-text" id="ui-text-timeup">
@@ -401,7 +402,7 @@
 
  
 <script type="module">
-    // 1. 引入 Firebase (只寫這一次，放在最上面)
+    // 1. 引入 Firebase (確保只出現一次)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, setDoc, doc, serverTimestamp, getCountFromServer } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -417,9 +418,42 @@
         measurementId: "G-FLYGZGG3ZS"
     };
 
+    // 初始化 Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const GAME_ID = "bear_flash_tap";
+
+    // --- 🌟 教學貼圖在地化設定 ---
+    let userRegion = "EN"; 
+    const TUTORIAL_CONFIG = {
+        "TW": {
+            src: "assets/ui_text_tutorial_tw.webp",
+            x: 350, y: 444, w: 270, h: 47
+        },
+        "EN": {
+            src: "assets/ui_text_tutorial_en.webp",
+            x: 350, y: 449, w: 380, h: 46
+        }
+    };
+
+    // 偵測 IP 並預先設定貼圖
+    async function initLocalization() {
+        try {
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            if (data.country_code === "TW") userRegion = "TW";
+        } catch (e) { console.log("IP偵測失敗，預設英文"); }
+
+        const config = TUTORIAL_CONFIG[userRegion];
+        const img = document.getElementById('ui-tutorial-img');
+        if (img) {
+            img.src = config.src;
+            img.style.left = `${config.x}px`;
+            img.style.top = `${config.y}px`;
+            img.style.width = `${config.w}px`;
+            img.style.height = `${config.h}px`;
+        }
+    }
 
     // --- 全域音效工具 ---
     let audioCtx = null; 
@@ -514,6 +548,10 @@
     window.addEventListener('load', () => {
         resizeGame();
         preloadGameAssets();
+
+        // 🌟 補上這一行！讓程式一進來就去設定貼圖
+        initLocalization();
+        
         document.querySelectorAll('.card-slot').forEach((slot, i) => {
             setupButtonFeedback(slot, true, i); 
         });
@@ -565,6 +603,9 @@
 
     // 🌟 全域掛載 StartGame
     window.startGameProcess = function() {
+        // 貼在 resetGameUI(); 下方
+        const tutorialImg = document.getElementById('ui-tutorial-img');
+        if (tutorialImg) tutorialImg.style.display = 'block';
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
 
@@ -572,6 +613,7 @@
         if (bgm) { bgm.volume = 0.5; bgm.play().catch(e => console.log("Music blocked:", e)); }
 
         resetGameUI();
+
         state = { isPlaying: false, isPaused: false, hearts: 3, round: 1, currentTarget: 1, maxTargetInWave: 9, numbersOnGrid: [] };
         currentScore = 0;
         
@@ -663,6 +705,11 @@
             updateComboBar();
 
             if (state.currentTarget > state.maxTargetInWave) {
+        // 貼在 if (state.currentTarget > state.maxTargetInWave) { 的正下方
+            if (state.round === 1) {
+            const tutorialImg = document.getElementById('ui-tutorial-img');
+            if (tutorialImg) tutorialImg.style.display = 'none';
+        }   
                 if (state.round % 5 === 0 && state.hearts < 3) {
                     state.hearts++;
                     if(window.testHP) window.testHP(state.hearts);
