@@ -336,6 +336,8 @@
     </div>
 
     <audio id="bgm-main" src="assets/bgm_main.mp3" loop preload="auto"></audio>
+    <audio id="sfx-warning" src="assets/sfx_warning.mp3" preload="auto"></audio>
+    <audio id="bgm-devil" src="assets/devil_bgm.mp3" loop preload="auto"></audio>
 
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-1">
     <img src="assets/icon_heart.webp" class="ui-element hud-item" id="ui-heart-2">
@@ -763,9 +765,30 @@
             setGridNumber(i, nums[i]);
         });
     }
-    // 🌟 3-1. 惡魔進場動畫 (三階段：閃紅 -> 文字 -> 變身)
+    // 🌟 3-1. 惡魔進場動畫 (包含音效切換 - 選項 A 壓迫版)
     window.triggerDevilMode = function() {
-        // --- 階段一：紅色警報狂閃 ---
+        // --- 🎵 音效控制區 ---
+        // 1. 暫停原本輕快的音樂
+        const mainBgm = document.getElementById('bgm-main');
+        if (mainBgm) mainBgm.pause();
+
+        // 2. 播放警報聲 (不循環)
+        const sfxWarning = document.getElementById('sfx-warning');
+        if (sfxWarning) { 
+            sfxWarning.currentTime = 0; 
+            sfxWarning.volume = 1.0; 
+            sfxWarning.play().catch(e => console.log("Audio play failed", e));
+        }
+
+        // 3. 播放惡魔 BGM (循環，與警報重疊，製造壓迫感)
+        const devilBgm = document.getElementById('bgm-devil');
+        if (devilBgm) {
+            devilBgm.currentTime = 0;
+            devilBgm.volume = 0.8; //稍微小聲一點點讓警報突顯
+            devilBgm.play().catch(e => console.log("Audio play failed", e));
+        }
+
+        // --- 畫面特效區 ---
         state.isTimePaused = true; 
         
         // 清空桌面
@@ -774,19 +797,13 @@
             slot.style.display = 'none';
         });
 
-        // 🔴 啟動紅色閃爍 (加 class)
+        // 🔴 啟動紅色閃爍
         const container = document.getElementById('game-container');
         container.classList.add('anim-red-flash');
         
-        // 🔊 播警報聲
-        playSnd(150, 'sawtooth', 0.5); 
-
         // --- 階段二：(1.5秒後) 停止閃紅，出現 WARNING ---
         setTimeout(() => {
-            // 🛑 移除紅色閃爍 (畫面恢復正常顏色)
             container.classList.remove('anim-red-flash');
-
-            // ⚠️ 顯示警告文字
             const warningEl = document.getElementById('ui-text-warning');
             if (warningEl) {
                 warningEl.style.display = 'block';
@@ -796,36 +813,33 @@
 
         // --- 階段三：(再過 1.5秒，共3秒後) 文字消失，變身開始 ---
         setTimeout(() => {
-            // 隱藏警告文字
             const warningEl = document.getElementById('ui-text-warning');
             if (warningEl) {
                 warningEl.style.display = 'none';
                 warningEl.classList.remove('anim-warning');
             }
 
-            // 🐻 熊熊變身 (利用原本寫好的函式)
+            // 🐻 熊熊變身
             window.triggerBearDeath(); 
             
-            // ⚡️ 閃電加速 (這時候才加速，配合變身)
+            // ⚡️ 閃電加速
             const thunders = document.querySelectorAll('.vfx-thunder');
             thunders.forEach(t => t.classList.add('thunder-fast'));
 
             // --- 階段四：(再過 1秒變身演完) 正式開戰 ---
             setTimeout(() => {
                 state.isDevilMode = true;
-                state.devilWaveCount = 0; // 重置惡魔輪數
-                state.savedRoundNumber = state.round; // 💾 存檔！
-                
-                spawnWave(); // 生成惡魔數字
-                
-                state.isTimePaused = false; // 解除暫停，開戰！
+                state.devilWaveCount = 0;
+                state.savedRoundNumber = state.round;
+                spawnWave(); 
+                state.isTimePaused = false; 
             }, 1000);
 
         }, 3000);
     };
 
-    // 🌟 3-2. 惡魔退場動畫 (導演系統 B)
-        window.exitDevilMode = function() {
+   // 🌟 3-2. 惡魔退場動畫 (音效切換回正常)
+    window.exitDevilMode = function() {
         state.isTimePaused = true;
 
         // 清空桌面
@@ -834,11 +848,22 @@
             slot.style.display = 'none';
         });
 
+        // --- 🎵 音效切換 ---
+        // 1. 停止惡魔音樂
+        const devilBgm = document.getElementById('bgm-devil');
+        if (devilBgm) devilBgm.pause();
+
+        // 2. 恢復正常音樂
+        const mainBgm = document.getElementById('bgm-main');
+        if (mainBgm) {
+            mainBgm.currentTime = 0; // 重頭開始播，更有「雨過天晴」的感覺
+            mainBgm.play();
+        }
+
         // 變回正常熊熊
         const bearNormal = document.getElementById('ui-character-bear');
         const bearDevil = document.getElementById('ui-character-devil');
         
-        // 惡魔下沉
         bearDevil.classList.remove('effect-rise');
         bearDevil.classList.add('effect-sink');
 
@@ -855,10 +880,8 @@
             // 恢復原本關卡
             setTimeout(() => {
                 state.isDevilMode = false;
-                state.round = state.savedRoundNumber; // 📂 讀檔！回到原本關卡
-                
-                spawnWave(); // 生成原本順序的數字
-                
+                state.round = state.savedRoundNumber; 
+                spawnWave(); 
                 state.isTimePaused = false;
             }, 1000);
         }, 1000);
@@ -985,15 +1008,26 @@
         }
     }
 
-    // 🌟 修正版 GameOver：自動登入 + ID 檢查
+   // 🌟 修正版 GameOver：強制停止所有背景音樂
     function gameOver(reason) {
-        const bgm = document.getElementById('bgm-main');
-        if (bgm) { bgm.pause(); bgm.currentTime = 0; }
+        // 1. 🛑 停止所有音樂 (包含正常 BGM、惡魔 BGM、警報聲)
+        const bgmMain = document.getElementById('bgm-main');
+        const bgmDevil = document.getElementById('bgm-devil');
+        const sfxWarning = document.getElementById('sfx-warning');
+
+        if (bgmMain) { bgmMain.pause(); bgmMain.currentTime = 0; }
+        if (bgmDevil) { bgmDevil.pause(); bgmDevil.currentTime = 0; }
+        if (sfxWarning) { sfxWarning.pause(); sfxWarning.currentTime = 0; }
+
+        // 2. 停止遊戲邏輯
         state.isPlaying = false;
         if(window.stopGameTimer) window.stopGameTimer();
+        
+        // 如果不是因為時間到(TimeUp)死的，才執行死亡動畫
+        // (因為 TimeUp 通常已經在變身了，或者直接結束比較乾脆)
         if(window.triggerBearDeath) window.triggerBearDeath();
 
-        // 核心動作：檢查手機是否已經有身分證 (ID)
+        // 3. 核心動作：檢查手機是否已經有身分證 (ID)
         const savedId = localStorage.getItem('pixel_jd_player_id');
         const savedName = localStorage.getItem('pixel_jd_player_name');
         
@@ -1015,7 +1049,8 @@
 
         setTimeout(() => {
             const elId = (reason === 'time') ? 'ui-text-timeup' : 'ui-text-gameover';
-            document.getElementById(elId).classList.add('anim-pop-end');
+            const endText = document.getElementById(elId);
+            if(endText) endText.classList.add('anim-pop-end');
         }, 800);
     }
 
@@ -1108,16 +1143,45 @@
         return html;
     }
 
+    // 🌟 修正版：點擊回饋動畫 (加入清除舊動畫邏輯)
     function handleBearHit() {
         const bearNormal = document.getElementById('ui-character-bear');
         const bearDevil = document.getElementById('ui-character-devil');
+        
+        // 判斷現在是哪隻熊在場上
         const activeBear = (bearDevil.style.display !== 'none' && bearDevil.classList.contains('effect-rise')) ? bearDevil : bearNormal;
-        activeBear.classList.remove('effect-shake');
+        
+        // 🧹 【關鍵修正】先移除所有可能的動畫 class，避免卡住
+        activeBear.classList.remove('effect-rise', 'effect-sink', 'effect-shake');
+        
+        // 觸發重繪 (Reflow) 讓動畫能重新播放
         void activeBear.offsetWidth; 
+        
+        // 加上抖動特效
         activeBear.classList.add('effect-shake');
+        
+        // 0.2秒後移除抖動
         setTimeout(() => activeBear.classList.remove('effect-shake'), 200);
     }
-
+// 🌟 補回遺失的變身函式
+    window.triggerBearDeath = function() {
+        const bearNormal = document.getElementById('ui-character-bear');
+        const bearDevil = document.getElementById('ui-character-devil');
+        
+        // 🧹 【關鍵修正】變身/死亡前，先把「出場動畫」移除
+        bearNormal.classList.remove('effect-rise');
+        
+        // 執行下沉
+        bearNormal.classList.add('effect-sink');
+        
+        setTimeout(() => {
+            bearNormal.style.display = 'none'; 
+            bearDevil.style.display = 'block'; 
+            // 惡魔升起
+            bearDevil.classList.add('effect-rise');
+        }, 1000); 
+    };
+    
     function setupButtonFeedback(element, isCard = false, index = -1) {
         if (!element) return;
         const pressClass = isCard ? 'pressed' : 'btn-pressed';
@@ -1174,17 +1238,6 @@
         if(nameEl) nameEl.textContent = playerName;
         const myScoreContainer = document.getElementById('my-rank-score-container');
         if(myScoreContainer) myScoreContainer.innerHTML = getScoreHtml(currentScore);
-    };
-
-    window.triggerBearDeath = function() {
-        const bearNormal = document.getElementById('ui-character-bear');
-        const bearDevil = document.getElementById('ui-character-devil');
-        bearNormal.classList.add('effect-sink');
-        setTimeout(() => {
-            bearNormal.style.display = 'none'; 
-            bearDevil.style.display = 'block'; 
-            bearDevil.classList.add('effect-rise');
-        }, 1000); 
     };
 
     window.stopGameTimer = function() {
