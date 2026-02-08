@@ -294,12 +294,6 @@
     animation: warning-flash 0.3s infinite !important;
 }
 
-/* 2. ⚡️ 閃電加速 (讓背景狂閃) */
-.thunder-fast {
-    animation-duration: 0.2s !important; /* 原本是 5s，現在變 0.2s */
-    opacity: 0.8 !important;
-}
-
 /* 3. 畫面變紅 (壓抑氣氛) */
 .bg-devil-mode {
     filter: sepia(1) hue-rotate(-50deg) saturate(3) !important;
@@ -313,6 +307,49 @@
 .anim-red-flash {
     animation: red-strobe 0.15s infinite; /* 0.15秒狂閃一次，超急促 */
 }
+/* --- 😈 惡魔模式：動感特效強化 --- */
+        
+        /* 1. 惡魔熊跳舞 (保留原本的置中，並加入上下彈跳) */
+        @keyframes devil-bounce {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -54%) scale(1.02); }
+        }
+        .anim-devil-dance {
+            animation: devil-bounce 0.4s ease-in-out infinite !important;
+        }
+
+        /* 3. 鍵盤震動 (模擬地殼不穩) */
+        @keyframes grid-rumble {
+            0% { transform: translate(0px, 0px); }
+            25% { transform: translate(-2px, 2px); }
+            50% { transform: translate(2px, -2px); }
+            75% { transform: translate(-2px, -2px); }
+            100% { transform: translate(0px, 0px); }
+        }
+        .grid-shaking {
+            animation: grid-rumble 0.2s linear infinite;
+        }
+        /* ⚡️ 最終修復：惡魔雷電 (解決疊加/殘影問題) */
+        
+        /* 1. 定義一個全新的、乾淨的頻閃動畫 (大部分時間是黑的) */
+        @keyframes devil-strobe-pulse {
+            0%   { opacity: 0; } /* 全黑 */
+            40%  { opacity: 0; } /* 保持全黑 (給眼睛一點間隔，消除殘影) */
+            50%  { opacity: 1; } /* ⚡️ 瞬間全亮！ */
+            60%  { opacity: 0; } /* 馬上變黑 */
+            100% { opacity: 0; } /* 保持全黑 */
+        }
+
+        /* 2. 套用到 Class 上 */
+        #vfx-thunder-left.thunder-fast, 
+        #vfx-thunder-right.thunder-fast {
+            /* 使用上面的新動畫，0.15秒一次，linear 讓時間控制最精準 */
+            animation: devil-strobe-pulse 0.15s linear infinite !important;
+            
+            /* 🔥 重點修正：這裡【絕對不要】寫 opacity: 1 !important; */
+            /* 我們只保留濾鏡就好，讓 brightness 提高亮度 */
+            filter: brightness(2.5) contrast(1.5) !important; 
+        }
  </style>
 </head>
 <body>
@@ -765,7 +802,7 @@
             setGridNumber(i, nums[i]);
         });
     }
-    // 🌟 3-1. 惡魔進場動畫 (包含音效切換 - 選項 A 壓迫版)
+  // 🌟 3-1. 惡魔進場動畫 (包含音效切換 & 跳舞特效)
     window.triggerDevilMode = function() {
         // --- 🎵 音效控制區 ---
         // 1. 暫停原本輕快的音樂
@@ -780,11 +817,11 @@
             sfxWarning.play().catch(e => console.log("Audio play failed", e));
         }
 
-        // 3. 播放惡魔 BGM (循環，與警報重疊，製造壓迫感)
+        // 3. 播放惡魔 BGM (循環)
         const devilBgm = document.getElementById('bgm-devil');
         if (devilBgm) {
             devilBgm.currentTime = 0;
-            devilBgm.volume = 0.8; //稍微小聲一點點讓警報突顯
+            devilBgm.volume = 0.8; 
             devilBgm.play().catch(e => console.log("Audio play failed", e));
         }
 
@@ -820,7 +857,7 @@
             }
 
             // 🐻 熊熊變身
-            window.triggerBearDeath(); 
+            if (window.triggerBearDeath) window.triggerBearDeath(); 
             
             // ⚡️ 閃電加速
             const thunders = document.querySelectorAll('.vfx-thunder');
@@ -829,6 +866,13 @@
             // --- 階段四：(再過 1秒變身演完) 正式開戰 ---
             setTimeout(() => {
                 state.isDevilMode = true;
+
+                // 🔥【新增】啟動惡魔跳舞 & 鍵盤震動
+                const devilChar = document.getElementById('ui-character-devil');
+                const grid = document.getElementById('game-grid');
+                if(devilChar) devilChar.classList.add('anim-devil-dance');
+                if(grid) grid.classList.add('grid-shaking');
+
                 state.devilWaveCount = 0;
                 state.savedRoundNumber = state.round;
                 spawnWave(); 
@@ -838,7 +882,7 @@
         }, 3000);
     };
 
-   // 🌟 3-2. 惡魔退場動畫 (音效切換回正常)
+    // 🌟 3-2. 惡魔退場動畫 (音效切換 + 移除跳舞特效)
     window.exitDevilMode = function() {
         state.isTimePaused = true;
 
@@ -853,10 +897,16 @@
         const devilBgm = document.getElementById('bgm-devil');
         if (devilBgm) devilBgm.pause();
 
+        // 🧹【新增】停止跳舞 & 停止震動
+        const devilChar = document.getElementById('ui-character-devil');
+        const grid = document.getElementById('game-grid');
+        if(devilChar) devilChar.classList.remove('anim-devil-dance');
+        if(grid) grid.classList.remove('grid-shaking');
+
         // 2. 恢復正常音樂
         const mainBgm = document.getElementById('bgm-main');
         if (mainBgm) {
-            mainBgm.currentTime = 0; // 重頭開始播，更有「雨過天晴」的感覺
+            mainBgm.currentTime = 0; 
             mainBgm.play();
         }
 
@@ -881,11 +931,12 @@
             setTimeout(() => {
                 state.isDevilMode = false;
                 state.round = state.savedRoundNumber; 
+                state.isGraceRound = true; // 確保回來後第一局是休息局
                 spawnWave(); 
                 state.isTimePaused = false;
             }, 1000);
         }, 1000);
-    }
+    };
 
     // 🌟 Step 4-3: 最終版點擊邏輯 (包含機率檢定與惡魔進退場)
     function handleCardTap(index) {
